@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧文字辨識系統</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 SheetJS (xlsx) 函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* 自訂樣式 */
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f4f7f6;
+        }
+        /* 按鈕禁用時的樣式 */
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        /* 影片填滿容器 */
+        #video-el {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* 鏡像翻轉，符合使用習慣 */
+        }
+        .container-area {
+            background-color: white;
+            border-radius: 0.75rem; /* 12px */
+            padding: 1.5rem; /* 24px */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        /* 表格樣式 */
+        #result-table thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f9fafb; /* gray-50 */
+        }
+        /* 選取列的反白樣式 */
+        #result-table tbody tr.selected {
+            background-color: #dbeafe; /* blue-100 */
+        }
+        #result-table tbody tr.selected:hover {
+            background-color: #bfdbfe; /* blue-200 */
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Left Side: Input -->
+        <div class="container-area space-y-4">
+            <h2 class="text-xl font-semibold text-gray-700">上傳圖片或拍照</h2>
+
+            <!-- API Key Input -->
+            <div class="space-y-2 border-b border-gray-200 pb-4">
+                <label for="api-key-input" class="block text-sm font-medium text-gray-600">自訂 API 金鑰 (選用)</label>
+                <div class="flex gap-2">
+                    <input type="text" id="api-key-input" class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="只需輸入金鑰的數字部分">
+                    <button id="save-api-key-btn" class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">儲存</button>
+                </div>
+                <p id="api-key-status" class="text-xs text-gray-500 mt-1"></p>
+            </div>
+
+            <!-- Input Buttons -->
+            <div class="grid grid-cols-2 gap-4 pt-4">
+                <button id="upload-btn" class="flex items-center justify-center w-full px-4 py-3 bg-blue-600 text-white rounded-lg shadow font-medium hover:bg-blue-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                    上傳圖片
+                </button>
+                <input type="file" id="file-input" accept="image/*" class="hidden">
+
+                <button id="camera-btn" class="flex items-center justify-center w-full px-4 py-3 bg-teal-600 text-white rounded-lg shadow font-medium hover:bg-teal-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2H4zm12 7a1 1 0 100-2 1 1 0 000 2zM4 9a1 1 0 100-2 1 1 0 000 2zm7-2a3 3 0 11-6 0 3 3 0 016 0z" clip-rule="evenodd" /></svg>
+                    <span id="camera-btn-text">開啟相機</span>
+                </button>
+            </div>
+
+            <!-- Image Preview Area -->
+            <div class="w-full aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
+                <img id="image-preview" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=尚未選擇圖片" alt="圖片預覽" class="w-full h-full object-contain">
+                <!-- Video Container -->
+                <div id="video-container" class="hidden w-full h-full relative">
+                    <video id="video-el" autoplay playsinline></video>
+                    <button id="capture-btn" class="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full border-4 border-red-500 transition-transform hover:scale-105" title="拍照"></button>
+                </div>
+            </div>
+
+            <!-- Recognize Button -->
+            <button id="recognize-btn" class="w-full px-4 py-3 bg-green-600 text-white rounded-lg shadow font-medium hover:bg-green-700 transition-colors text-lg btn-disabled" disabled>
+                新增一列
+            </button>
+        </div>
+
+        <!-- Right Side: Result -->
+        <div class="container-area space-y-4">
+            <!-- Header and Action Buttons -->
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <h2 class="text-xl font-semibold text-gray-700">辨識結果</h2>
+                <div class="flex space-x-2 flex-wrap gap-2">
+                    <button id="copy-btn" class="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 btn-disabled" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" /><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H4z" /></svg>
+                        <span id="copy-text">複製表格</span>
+                    </button>
+                    <button id="delete-btn" class="relative inline-flex items-center px-3 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 btn-disabled" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        <span>刪除所選列</span>
+                    </button>
+                    <button id="export-btn" class="relative inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 btn-disabled" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        <span>匯出 XLSX</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Status Area -->
+            <div id="status-area" class="text-center text-gray-500 mb-2 hidden">
+                <p id="status-text" class="mb-1"></p>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Result Table -->
+            <div class="overflow-auto border border-gray-200 rounded-lg" style="max-height: 400px;">
+                <table id="result-table" class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">財產編號</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">取得日期</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用年限</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">財產名稱</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">規格</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">保管單位</th>
+                        </tr>
+                    </thead>
+                    <tbody id="result-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <p id="result-text" class="text-gray-500 text-sm">請上傳圖片以開始辨識。</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- 狀態管理 ---
+            const state = {
+                recognizedData: [],
+                selectedRowIndex: -1,
+                imageToRecognize: null,
+                isRecognizing: false,
+                mediaStream: null,
+                customApiKey: null, // 新增
+            };
+
+            // --- DOM 元素 ---
+            const dom = {
+                uploadBtn: document.getElementById('upload-btn'),
+                fileInput: document.getElementById('file-input'),
+                cameraBtn: document.getElementById('camera-btn'),
+                cameraBtnText: document.getElementById('camera-btn-text'),
+                imagePreview: document.getElementById('image-preview'),
+                videoContainer: document.getElementById('video-container'),
+                videoEl: document.getElementById('video-el'),
+                captureBtn: document.getElementById('capture-btn'),
+                recognizeBtn: document.getElementById('recognize-btn'),
+                copyBtn: document.getElementById('copy-btn'),
+                deleteBtn: document.getElementById('delete-btn'),
+                exportBtn: document.getElementById('export-btn'),
+                statusArea: document.getElementById('status-area'),
+                statusText: document.getElementById('status-text'),
+                progressBar: document.getElementById('progress-bar'),
+                resultTableBody: document.getElementById('result-table-body'),
+                resultText: document.getElementById('result-text'),
+                copyText: document.getElementById('copy-text'),
+                // 新增
+                apiKeyInput: document.getElementById('api-key-input'),
+                saveApiKeyBtn: document.getElementById('save-api-key-btn'),
+                apiKeyStatus: document.getElementById('api-key-status'),
+            };
+            
+            // --- API 金鑰 ---
+            // 將 API_KEY 留空。Canvas 環境會自動注入金鑰。
+            // 移除使用者貼上的金鑰，修正為正確的預設值
+            const API_KEY = ""; 
+            // 移除靜態 API_URL，改為在函式中動態產生
+            // const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+            const API_PROMPT = `
+                你是一個專業的 OCR 辨識引擎。
+                使用者的任務是從資產標籤圖片中辨識資料並建檔。
+                請辨識這張圖片中的文字，並只專注於以下欄位：
+                "財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位"。
+                
+                圖片可能包含多個項目，或只有一個項目。
+                請嚴格依照這個 JSON 格式回傳，回傳一個包含所有辨識到項目的陣列。
+                如果圖片中只有一個項目，陣列中就只有一個物件。
+                如果欄位為空或無法辨識，請回傳空字串 ""。
+                
+                {
+                  "items": [
+                    {
+                      "財產編號": "...",
+                      "取得日期": "...",
+                      "使用年限": "...",
+                      "財產名稱": "...",
+                      "規格": "...",
+                      "保管單位": "..."
+                    }
+                  ]
+                }
+            `;
+
+            // --- 事件監聽 ---
+            function initialize() {
+                loadCustomApiKey(); // 新增：頁面載入時檢查
+                dom.uploadBtn.addEventListener('click', () => dom.fileInput.click());
+                dom.fileInput.addEventListener('change', handleFileUpload);
+                dom.cameraBtn.addEventListener('click', toggleCamera);
+                dom.captureBtn.addEventListener('click', capturePhoto);
+                dom.recognizeBtn.addEventListener('click', performOCR);
+                dom.copyBtn.addEventListener('click', copyResultToClipboard);
+                dom.deleteBtn.addEventListener('click', deleteSelectedRow);
+                dom.exportBtn.addEventListener('click', exportToXLSX);
+                dom.resultTableBody.addEventListener('click', handleRowClick);
+                dom.saveApiKeyBtn.addEventListener('click', saveCustomApiKey); // 新增
+                updateUIState();
+            }
+
+            // --- UI 更新 ---
+
+            /**
+             * 根據當前狀態更新所有 UI 元素
+             */
+            function updateUIState() {
+                const hasData = state.recognizedData.length > 0;
+                const isRowSelected = state.selectedRowIndex !== -1;
+                const hasImage = !!state.imageToRecognize;
+
+                // 辨識按鈕
+                dom.recognizeBtn.disabled = !hasImage || state.isRecognizing;
+                dom.recognizeBtn.textContent = isRowSelected ? '更新所選列' : '新增一列';
+                
+                if (state.isRecognizing) {
+                    dom.recognizeBtn.textContent = '辨識中...';
+                    dom.recognizeBtn.classList.add('btn-disabled');
+                } else if (!hasImage) {
+                    dom.recognizeBtn.classList.add('btn-disabled');
+                } else {
+                    dom.recognizeBtn.classList.remove('btn-disabled');
+                }
+
+                // 操作按鈕
+                dom.copyBtn.disabled = !hasData;
+                dom.exportBtn.disabled = !hasData;
+                dom.deleteBtn.disabled = !isRowSelected;
+
+                [dom.copyBtn, dom.exportBtn, dom.deleteBtn].forEach(btn => {
+                    if (btn.disabled) {
+                        btn.classList.add('btn-disabled');
+                    } else {
+                        btn.classList.remove('btn-disabled');
+                    }
+                });
+
+                // 結果區域文字
+                if (hasData) {
+                    dom.resultText.textContent = `共 ${state.recognizedData.length} 筆資料。點擊任一列可進行更新或刪除。`;
+                } else {
+                    dom.resultText.textContent = '請上傳圖片以開始辨識。';
+                }
+            }
+
+            /**
+             * 顯示狀態訊息和進度條
+             */
+            function showStatus(message, progress = -1) {
+                dom.statusArea.classList.remove('hidden');
+                dom.statusText.textContent = message;
+                if (progress === -1) {
+                    // 錯誤狀態
+                    dom.progressBar.style.width = '100%';
+                    dom.progressBar.classList.add('bg-red-500');
+                    dom.progressBar.classList.remove('bg-blue-600');
+                } else {
+                    // 進行中或完成
+                    dom.progressBar.style.width = `${progress}%`;
+                    dom.progressBar.classList.remove('bg-red-500');
+                    dom.progressBar.classList.add('bg-blue-600');
+                }
+            }
+
+            /**
+             * 隱藏狀態訊息
+             */
+            function hideStatus() {
+                dom.statusArea.classList.add('hidden');
+            }
+
+            // --- API 金鑰儲存 ---
+
+            /**
+             * 載入儲存在 localStorage 的金鑰
+             */
+            function loadCustomApiKey() {
+                const savedKey = localStorage.getItem('customGeminiApiKey');
+                if (savedKey) {
+                    state.customApiKey = savedKey;
+                    // 顯示數字部分
+                    const displayValue = savedKey.startsWith('gen-lang-client-') ? savedKey.substring('gen-lang-client-'.length) : savedKey;
+                    dom.apiKeyInput.value = displayValue;
+                    dom.apiKeyStatus.textContent = '已載入儲存的金鑰。';
+                    dom.apiKeyStatus.className = 'text-xs text-green-600 mt-1';
+                }
+            }
+
+            /**
+             * 儲存自訂金鑰到 localStorage
+             */
+            function saveCustomApiKey() {
+                const keyInput = dom.apiKeyInput.value.trim();
+                if (keyInput) {
+                    // 檢查是否僅為數字
+                    const fullKey = /^\d+$/.test(keyInput) ? 'gen-lang-client-' + keyInput : keyInput;
+                    localStorage.setItem('customGeminiApiKey', fullKey);
+                    state.customApiKey = fullKey;
+                    dom.apiKeyInput.value = keyInput; // 保持輸入框為數字
+                    dom.apiKeyStatus.textContent = '金鑰已儲存！';
+                    dom.apiKeyStatus.className = 'text-xs text-green-600 mt-1';
+                    setTimeout(() => { dom.apiKeyStatus.textContent = ''; }, 2000);
+                } else {
+                    // 如果儲存為空，則清除
+                    clearCustomApiKey('已清除金鑰，將使用預設金鑰。', 'text-gray-600');
+                }
+            }
+
+            /**
+             * 清除自訂金鑰 (因為請求失敗或使用者手動清除)
+             */
+            function clearCustomApiKey(message, colorClass = 'text-red-600') {
+                localStorage.removeItem('customGeminiApiKey');
+                state.customApiKey = null;
+                dom.apiKeyInput.value = '';
+                dom.apiKeyStatus.textContent = message;
+                dom.apiKeyStatus.className = `text-xs ${colorClass} mt-1`;
+                // 3 秒後清除狀態訊息
+                setTimeout(() => { dom.apiKeyStatus.textContent = ''; }, 3000);
+            }
+
+
+            // --- 圖片與相機處理 ---
+
+            function handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    stopCamera();
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        state.imageToRecognize = e.target.result;
+                        dom.imagePreview.src = state.imageToRecognize;
+                        dom.imagePreview.classList.remove('hidden');
+                        dom.videoContainer.classList.add('hidden');
+                        updateUIState();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+
+            async function toggleCamera() {
+                if (state.mediaStream) {
+                    stopCamera();
+                } else {
+                    try {
+                        state.mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { facingMode: 'environment' } 
+                        });
+                        dom.videoEl.srcObject = state.mediaStream;
+                        dom.imagePreview.classList.add('hidden');
+                        dom.videoContainer.classList.remove('hidden');
+                        dom.cameraBtnText.textContent = '關閉相機';
+                    } catch (err) {
+                        console.error("無法存取相機:", err);
+                        showStatus('無法存取相機', -1);
+                        setTimeout(hideStatus, 3000);
+                    }
+                }
+            }
+
+            function stopCamera() {
+                if (state.mediaStream) {
+                    state.mediaStream.getTracks().forEach(track => track.stop());
+                    state.mediaStream = null;
+                    dom.videoEl.srcObject = null;
+                    dom.imagePreview.classList.remove('hidden');
+                    dom.videoContainer.classList.add('hidden');
+                    dom.cameraBtnText.textContent = '開啟相機';
+                }
+            }
+
+            function capturePhoto() {
+                if (!state.mediaStream) return;
+                const canvas = document.createElement('canvas');
+                canvas.width = dom.videoEl.videoWidth;
+                canvas.height = dom.videoEl.videoHeight;
+                const context = canvas.getContext('2d');
+                // 修正鏡像
+                context.translate(canvas.width, 0);
+                context.scale(-1, 1);
+                context.drawImage(dom.videoEl, 0, 0, canvas.width, canvas.height);
+                
+                // 將影像存回 state
+                state.imageToRecognize = canvas.toDataURL('image/jpeg');
+                dom.imagePreview.src = state.imageToRecognize;
+                
+                // 停止相機並顯示預覽
+                stopCamera();
+                updateUIState();
+            }
+
+            // --- 核心辨識邏輯 ---
+
+            /**
+             * 執行 OCR 辨識
+             */
+            async function performOCR() {
+                if (!state.imageToRecognize || state.isRecognizing) return;
+
+                state.isRecognizing = true;
+                updateUIState();
+                showStatus('辨識中，請稍候...', 30);
+
+                try {
+                    const base64ImageData = state.imageToRecognize.split(',')[1];
+                    const items = await callGeminiAPI(base64ImageData);
+                    
+                    if (!items || items.length === 0) {
+                        throw new Error('API 未回傳有效的資料。');
+                    }
+                    
+                    handleOCRSuccess(items);
+                    showStatus('辨識完成', 100);
+
+                } catch (error) {
+                    console.error('OCR 失敗:', error);
+                    showStatus(`辨識失敗: ${error.message}`, -1);
+                } finally {
+                    state.isRecognizing = false;
+                    updateUIState();
+                    setTimeout(hideStatus, 3000);
+                }
+            }
+            
+            /**
+             * 呼叫 Gemini API
+             */
+            async function callGeminiAPI(base64ImageData) {
+                // 動態決定要使用的 API 金鑰和 URL
+                // 1. 優先使用 state 中儲存的自訂金鑰
+                // 2. 如果為空，則使用 ""，讓 Canvas 環境自動注入預設金鑰
+                const apiKeyToUse = state.customApiKey || API_KEY; // API_KEY 現在是 ""
+                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKeyToUse}`;
+
+                const payload = {
+                    contents: [
+                        {
+                            parts: [
+                                { text: API_PROMPT },
+                                {
+                                    inlineData: {
+                                        mimeType: "image/jpeg",
+                                        data: base64ImageData
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                    }
+                };
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    // 檢查是否為認證失敗 (400, 401, 403 通常是金鑰問題)
+                    if ([400, 401, 403].includes(response.status) && state.customApiKey) {
+                        // 請求失敗，清除自訂金鑰
+                        clearCustomApiKey('自訂金鑰請求失敗，已自動清除。');
+                        throw new Error(`API 請求失敗 (狀態碼: ${response.status})，自訂金鑰似乎無效，已清除。`);
+                    } else {
+                        throw new Error(`API 請求失敗，狀態碼: ${response.status}`);
+                    }
+                }
+
+                const result = await response.json();
+                
+                try {
+                    const jsonText = result.candidates[0].content.parts[0].text;
+                    const json = JSON.parse(jsonText);
+                    if (!json.items || !Array.isArray(json.items)) {
+                        throw new Error('API 回應格式不符，預期 { "items": [...] }');
+                    }
+                    return json.items;
+                } catch (e) {
+                    console.error("解析 API 回應失敗:", e, result);
+                    throw new Error('無法解析 API 回應的 JSON 格式。');
+                }
+            }
+
+            /**
+             * 處理辨識成功的資料
+             */
+            function handleOCRSuccess(items) {
+                // API 可能一次回傳多筆資料
+                items.forEach(newRowData => {
+                    if (state.selectedRowIndex === -1) {
+                        // 新增模式
+                        state.recognizedData.push(newRowData);
+                    } else {
+                        // 更新模式
+                        state.recognizedData[state.selectedRowIndex] = newRowData;
+                        // 更新完畢，取消選取
+                        state.selectedRowIndex = -1;
+                    }
+                });
+                
+                renderTable();
+                updateUIState();
+            }
+
+            // --- 表格操作 ---
+
+            /**
+             * 重新渲染整個表格
+             */
+            function renderTable() {
+                dom.resultTableBody.innerHTML = '';
+                const headers = ["財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位"];
+                
+                state.recognizedData.forEach((row, index) => {
+                    const tr = document.createElement('tr');
+                    tr.dataset.index = index;
+                    tr.className = "cursor-pointer transition-colors duration-150 hover:bg-gray-100";
+
+                    if (index === state.selectedRowIndex) {
+                        tr.classList.add('selected');
+                    }
+                    
+                    headers.forEach(header => {
+                        const td = document.createElement('td');
+                        td.className = "px-3 py-3 whitespace-nowrap text-sm text-gray-700";
+                        td.textContent = row[header] || ""; // 確保空值顯示為空字串
+                        tr.appendChild(td);
+                    });
+                    
+                    dom.resultTableBody.appendChild(tr);
+                });
+            }
+
+            /**
+             * 處理表格列的點擊事件 (選取/取消選取)
+             */
+            function handleRowClick(event) {
+                const tr = event.target.closest('tr');
+                if (!tr || !dom.resultTableBody.contains(tr)) return;
+
+                const clickedIndex = parseInt(tr.dataset.index, 10);
+
+                if (state.selectedRowIndex === clickedIndex) {
+                    // 再次點擊同一列 = 取消選取
+                    state.selectedRowIndex = -1;
+                } else {
+                    // 點擊新的一列 = 選取
+                    state.selectedRowIndex = clickedIndex;
+                }
+                
+                renderTable(); // 重新渲染以顯示反白
+                updateUIState(); // 更新按鈕狀態 (例如啟用 "刪除")
+            }
+
+            /**
+             * 刪除所選列
+             */
+            function deleteSelectedRow() {
+                if (state.selectedRowIndex === -1) return;
+
+                state.recognizedData.splice(state.selectedRowIndex, 1);
+                state.selectedRowIndex = -1;
+                
+                renderTable();
+                updateUIState();
+            }
+
+            // --- 匯出與複製 ---
+
+            /**
+             * 匯出為 .xlsx 檔案
+             */
+            function exportToXLSX() {
+                if (state.recognizedData.length === 0) {
+                    showStatus('沒有資料可匯出', -1);
+                    setTimeout(hideStatus, 3000);
+                    return;
+                }
+
+                const headers = ["財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位"];
+                
+                // 將資料轉換為 SheetJS 需要的格式
+                const data = [
+                    headers, // 第一列是標題
+                    ...state.recognizedData.map(row => {
+                        // 確保匯出順序與標題一致
+                        return headers.map(header => row[header] || "");
+                    })
+                ];
+
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "財產清單");
+
+                // 產生並下載檔案
+                XLSX.writeFile(wb, "財產清單.xlsx");
+            }
+
+            /**
+             * 複製表格資料到剪貼簿 (Tab 分隔)
+             */
+            function copyResultToClipboard() {
+                if (state.recognizedData.length === 0) return;
+
+                const headers = ["財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位"];
+                let tsvContent = headers.join('\t') + '\n'; // 標題列
+
+                tsvContent += state.recognizedData.map(row => {
+                    return headers.map(header => {
+                        let cell = row[header] || "";
+                        // 移除可能干擾 Tab 分隔的換行符
+                        return cell.toString().replace(/(\r\n|\n|\r)/gm, " ");
+                    }).join('\t');
+                }).join('\n');
+
+                // 使用 Clipboard API
+                navigator.clipboard.writeText(tsvContent).then(() => {
+                    // 成功提示
+                    dom.copyText.textContent = '已複製!';
+                    setTimeout(() => {
+                        dom.copyText.textContent = '複製表格';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('複製失敗: ', err);
+                    // 降級處理 (適用於 http 或舊瀏覽器)
+                    try {
+                        const textArea = document.createElement("textarea");
+                        textArea.value = tsvContent;
+                        textArea.style.position = "fixed";  // 避免滾動
+                        textArea.style.top = 0;
+                        textArea.style.left = 0;
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+
+                        dom.copyText.textContent = '已複製!';
+                        setTimeout(() => {
+                            dom.copyText.textContent = '複製表格';
+                        }, 2000);
+                    } catch (e) {
+                        console.error('降級複製失敗: ', e);
+                    }
+                });
+            }
+
+            // --- 啟動應用程式 ---
+            initialize();
+
+        });
+    </script>
+</body>
+</html>
+
+
+
