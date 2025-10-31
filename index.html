@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>財產編號填入</title>
+    <title>財產編號辨識</title>
     <!-- 載入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 載入 SheetJS (XLSX 匯出) -->
@@ -26,6 +26,19 @@
         .selected-row {
             background-color: #dbeafe !important; /* Tailwind blue-100 */
         }
+        /* 欄位拖曳條樣式 */
+        .resizer {
+            background-color: transparent;
+            transition: background-color 0.1s ease;
+        }
+        .resizer:hover {
+            background-color: #93c5fd; /* blue-300 */
+            opacity: 0.5;
+        }
+        /* 避免最後一欄被擠壓，讓表格填滿容器 */
+        .min-w-full {
+            table-layout: fixed;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
@@ -39,7 +52,6 @@
             <div class="mb-4">
                 <label for="api-key-input" class="block text-sm font-medium text-gray-700 mb-1">自訂 API 金鑰</label>
                 <div class="flex gap-2">
-                    <!-- *** 修改：改為 password 類型並更新 placeholder *** -->
                     <input type="password" id="api-key-input" class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="請輸入完整的 API 金鑰">
                     <button id="save-api-key-btn" class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">儲存</button>
                 </div>
@@ -97,7 +109,7 @@
             <h2 class="text-xl font-semibold text-gray-800 mb-4">辨識結果</h2>
             
             <!-- 操作按鈕 -->
-            <div class="flex gap-2 mb-4">
+            <div class="flex flex-wrap gap-2 mb-4">
                 <button id="copy-table-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400" disabled>複製表格</button>
                 <button id="delete-row-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400" disabled>刪除所選列</button>
                 <button id="export-xlsx-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400" disabled>匯出 XLSX</button>
@@ -107,26 +119,14 @@
             <!-- 結果表格 -->
             <div class="flex-1 overflow-auto border border-gray-200 rounded-lg">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50 sticky top-0">
-                        <tr>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">財產編號</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">取得日期</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用年限</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">財產名稱</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">規格</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">保管單位</th>
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <!-- 表頭會由 JS 渲染並加入 resizer -->
+                        <tr id="table-header-row">
+                            <!-- <th> 元素將在這裡生成 -->
                         </tr>
                     </thead>
                     <tbody id="result-table-body" class="bg-white divide-y divide-gray-200">
-                        <!-- 範例，會被 JS 取代 -->
-                        <tr class="hidden">
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">12345</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">2025-10-28</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">5</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">電腦</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">i5/16G/512G</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">資訊室</td>
-                        </tr>
+                        <!-- 數據行將由 JavaScript 動態插入 -->
                     </tbody>
                 </table>
                 <p id="no-data-msg" class="text-center text-gray-500 py-10">尚無辨識資料</p>
@@ -158,6 +158,7 @@
             exportXlsxBtn: document.getElementById('export-xlsx-btn'),
             resetBtn: document.getElementById('reset-btn'),
             resultTableBody: document.getElementById('result-table-body'),
+            tableHeaderRow: document.getElementById('table-header-row'),
             noDataMsg: document.getElementById('no-data-msg'),
         };
 
@@ -165,13 +166,42 @@
         const state = {
             base64Image: null,
             stream: null,
-            customApiKey: null, // 儲存自訂金鑰 (完整的金鑰)
-            recognizedData: [], // 儲存所有辨識出的列
-            selectedRowIndex: -1, // 目前選取的列 (-1 表示沒有選取)
-            isLoading: false,
+            customApiKey: null, 
+            recognizedData: [], 
+            selectedRowIndex: -1, 
+            loadingJobs: 0, 
+            
+            // 欄位寬度設定 (像素值)
+            columnWidths: {
+                'propertyId': 100,
+                'acquisitionDate': 120, 
+                'specification': 180, 
+                'department': 100,
+                'propertyName': 180,
+                'serviceLife': 90, 
+                'remark': 180, 
+            },
+            minWidth: 50, // 最小欄位寬度
+            
+            // 拖曳狀態
+            resizing: false,
+            resizingColKey: null,
+            startPageX: 0,
+            startWidth: 0,
+            
+            // 欄位定義 (用於渲染和寬度查找) - 與用戶最新要求同步
+            columnDefs: [
+                { key: 'propertyId', label: '財產編號' },
+                { key: 'acquisitionDate', label: '取得日期' },
+                { key: 'specification', label: '規格' },
+                { key: 'department', label: '保管單位' },
+                { key: 'propertyName', label: '財產名稱' },
+                { key: 'serviceLife', label: '使用年限' }, 
+                { key: 'remark', label: '狀況' }, // 備註仍是可編輯的 UI 欄位
+            ],
         };
 
-        // API 提示
+        // API 提示 - 更新為包含「使用年限」
         const API_PROMPT = 
 "你是一個高準確度的 OCR 辨識助理。\n" +
 "你的任務是辨識圖片中的財產標籤文字，並只回傳一個 JSON 陣列。\n" +
@@ -179,28 +209,28 @@
 "請嚴格依照以下 JSON 格式回傳，陣列中每個物件都必須包含 6 個鍵：\n" +
 "1. \"propertyId\": (財產編號)\n" +
 "2. \"acquisitionDate\": (取得日期)\n" +
-"3. \"serviceLife\": (使用年限)\n" +
-"4. \"propertyName\": (財產名稱)\n" +
-"5. \"specification\": (規格)\n" +
-"6. \"department\": (保管單位)\n\n" +
+"3. \"specification\": (規格：主機型號:)\n" +
+"4. \"department\": (保管單位)\n" +
+"5. \"propertyName\": (財產名稱)\n" +
+"6. \"serviceLife\": (使用年限)\n\n" +
+"請勿提供 '狀況(備註)' 欄位，該欄位將由使用者自行輸入。\n" +
 "例如:\n" +
 "[\n" +
 "  {\n" +
 "    \"propertyId\": \"123456\",\n" +
 "    \"acquisitionDate\": \"2025-01-01\",\n" +
-"    \"serviceLife\": \"5\",\n" +
+"    \"specification\": \"i5-12400/16G/512G SSD\",\n" +
+"    \"department\": \"資訊室\",\n" +
 "    \"propertyName\": \"筆記型電腦\",\n" +
-"    \"specification\": \"ABC-123\",\n" +
-"    \"department\": \"資訊室\"\n" +
+"    \"serviceLife\": \"5\"\n" +
 "  }\n" +
 "]\n\n" +
 "**重要規則：**\n" +
 "- **嚴格限制：** 每個欄位（例如 \"propertyName\"）的值 **只能** 包含它自己那一行的文字，**絕對不能** 包含下一個欄位（例如 \"specification\"）的標題或內容。\n" +
 "- 如果某個欄位在圖片中找不到對應文字，請回傳空字串 \"\"。\n" +
-"- **請忽略圖片底部任何關於「109年度中小學資訊科技教室電腦設備汰舊換新」的文字。**\n" +
 "- 不要回傳 \"json\" 或 \"```\" 標記，直接回傳 JSON 陣列本身。\n";
 
-        // --- API 金鑰管理 -----------------------------------------------------
+        // --- API 金鑰管理 (略，與之前相同) --------------------------------------
 
         /**
          * 載入儲存的自訂 API 金鑰
@@ -208,12 +238,10 @@
         function loadCustomApiKey() {
             const savedKey = localStorage.getItem('customGeminiApiKey');
             if (savedKey) {
-                // 驗證金鑰
                 testApiKey(savedKey, (isValid) => {
                     if (isValid) {
                         state.customApiKey = savedKey;
-                        // *** 修改：在輸入框中顯示完整的金鑰 ***
-                        dom.apiKeyInput.value = savedKey;
+                        dom.apiKeyInput.value = savedKey; 
                         dom.currentApiKeyDisplay.textContent = '自訂金鑰 (...' + savedKey.slice(-4) + ')';
                         dom.currentApiKeyDisplay.className = "font-medium text-blue-600";
                     } else {
@@ -232,21 +260,18 @@
         function saveCustomApiKey() {
             const keyInput = dom.apiKeyInput.value.trim();
             if (keyInput) {
-                // *** 修改：移除自動加上 "gen-lang-client-" 的邏輯 ***
                 const fullKey = keyInput;
                 
-                // 測試金鑰
-                updateStatus('正在驗證金鑰...', true);
+                updateStatus('正在驗證金鑰...', false);
                 dom.saveApiKeyBtn.disabled = true;
 
                 testApiKey(fullKey, (isValid) => {
-                    updateStatus('', false); // 清除驗證中訊息
                     dom.saveApiKeyBtn.disabled = false;
 
                     if (isValid) {
                         localStorage.setItem('customGeminiApiKey', fullKey);
                         state.customApiKey = fullKey;
-                        dom.apiKeyInput.value = fullKey; // 顯示完整金鑰
+                        dom.apiKeyInput.value = fullKey; 
                         
                         dom.apiKeyStatus.textContent = '金鑰已儲存並驗證成功！';
                         dom.apiKeyStatus.className = 'text-xs text-green-600 mt-1';
@@ -254,20 +279,19 @@
                         dom.currentApiKeyDisplay.className = "font-medium text-blue-600";
                         
                         setTimeout(() => { dom.apiKeyStatus.textContent = ''; }, 3000);
+                        updateStatus('', false); 
                     } else {
                         clearCustomApiKey('金鑰驗證失敗，請檢查金鑰。');
+                        updateStatus('金鑰驗證失敗', true); 
                     }
                 });
             } else {
-                // 如果輸入為空，則清除金鑰
                 clearCustomApiKey('已清除自訂金鑰，將使用預設金鑰。', 'text-gray-600');
             }
         }
 
         /**
          * 測試 API 金鑰是否有效
-         * @param {string} key - 完整的 API 金鑰
-         * @param {function(boolean)} callback - 回調函式
          */
         async function testApiKey(key, callback) {
             const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
@@ -279,7 +303,7 @@
                         contents: [{ parts: [{ text: "test" }] }]
                     })
                 });
-                callback(response.ok); // 200-299 狀態碼即為有效
+                callback(response.ok);
             } catch (error) {
                 console.error('API Key test failed:', error);
                 callback(false);
@@ -288,8 +312,6 @@
 
         /**
          * 清除自訂 API 金鑰
-         * @param {string} message - 顯示的訊息
-         * @param {string} [colorClass='text-red-600'] - 訊息的 CSS 類別
          */
         function clearCustomApiKey(message, colorClass = 'text-red-600') {
             localStorage.removeItem('customGeminiApiKey');
@@ -299,24 +321,20 @@
             dom.apiKeyStatus.className = `text-xs ${colorClass} mt-1`;
             dom.currentApiKeyDisplay.textContent = '預設金鑰';
             dom.currentApiKeyDisplay.className = "font-medium text-gray-700";
-            // 3 秒後清除狀態訊息
             setTimeout(() => { dom.apiKeyStatus.textContent = ''; }, 3000);
         }
 
         /**
          * 獲取目前有效的 API 金鑰
-         * @returns {string} API 金鑰
          */
         function getApiKey() {
-            // 優先使用自訂金鑰，如果沒有，則使用 "" 讓 Canvas 環境注入金鑰
             return state.customApiKey || "";
         }
 
-        // --- 圖片與相機處理 -------------------------------------------------
+        // --- 圖片與相機處理 (略，與之前相同) --------------------------------------
 
         /**
          * 處理圖片上傳
-         * @param {Event} event - 檔案上傳事件
          */
         function handleImageUpload(event) {
             stopCamera();
@@ -325,7 +343,6 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     dom.imagePreview.src = e.target.result;
-                    // 移除 base64 URL 前綴 (data:image/jpeg;base64,)
                     state.base64Image = e.target.result.split(',')[1];
                     updateStatus('圖片已載入', false);
                     updateDOM();
@@ -338,7 +355,7 @@
          * 啟動相機
          */
         async function startCamera() {
-            stopCamera(); // 先停止任何已存在的串流
+            stopCamera();
             try {
                 state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 dom.videoFeed.srcObject = state.stream;
@@ -346,11 +363,11 @@
                 dom.imagePreview.style.display = 'none';
                 dom.captureBtn.style.display = 'block';
                 updateStatus('相機已開啟', false);
-                state.base64Image = null; // 清除舊圖片
+                state.base64Image = null; 
                 updateDOM();
             } catch (err) {
                 console.error("無法存取相機: ", err);
-                updateStatus('無法開啟相機', false, true);
+                updateStatus('無法開啟相機', true); 
             }
         }
 
@@ -365,7 +382,7 @@
             dom.videoFeed.style.display = 'none';
             dom.videoFeed.srcObject = null;
             dom.captureBtn.style.display = 'none';
-            dom.imagePreview.style.display = 'block'; // 顯示回圖片
+            dom.imagePreview.style.display = 'block'; 
         }
 
         /**
@@ -389,51 +406,51 @@
             }
         }
 
-        // --- 核心辨識邏輯 ---------------------------------------------------
+        // --- 核心辨識邏輯 (已更新以處理 'serviceLife') ---------------------------
 
         /**
          * 執行 OCR 辨識
          */
         async function performOCR() {
             if (!state.base64Image) {
-                updateStatus('請先上傳圖片或拍照', false, true);
+                updateStatus('請先上傳圖片或拍照', true); 
                 return;
             }
 
-            state.isLoading = true;
-            updateDOM();
-            updateStatus('正在辨識中...', true);
+            state.loadingJobs++;
+            updateDOM(); 
 
             try {
                 const result = await callGeminiAPI(state.base64Image);
                 
-                // 檢查是否為陣列
                 if (!Array.isArray(result)) {
                     throw new Error("API 未回傳預期的陣列格式。");
                 }
 
-                // 過濾掉無效的資料
+                // 驗證並過濾結果 (已更新以檢查 serviceLife)
                 const validResults = result.filter(item => 
-                    item.propertyId || item.acquisitionDate || item.serviceLife || 
-                    item.propertyName || item.specification || item.department
+                    item.propertyId || item.acquisitionDate || item.specification || 
+                    item.department || item.propertyName || item.serviceLife
                 );
 
                 if (validResults.length === 0) {
                     updateStatus('辨識完成，但未找到有效資料。', false);
                 } else {
                     if (state.selectedRowIndex > -1) {
-                        // 更新模式 (假設只辨識到一筆)
-                        const updatedRow = validResults[0] || {}; // 取第一筆
+                        // 更新模式
+                        const updatedRow = validResults[0] || {};
+                        const existingRemark = state.recognizedData[state.selectedRowIndex].remark || "";
+                        
                         state.recognizedData[state.selectedRowIndex] = {
                             propertyId: updatedRow.propertyId || "",
                             acquisitionDate: updatedRow.acquisitionDate || "",
-                            serviceLife: updatedRow.serviceLife || "",
-                            propertyName: updatedRow.propertyName || "",
                             specification: updatedRow.specification || "",
                             department: updatedRow.department || "",
+                            propertyName: updatedRow.propertyName || "",
+                            serviceLife: updatedRow.serviceLife || "", // 確保 serviceLife 被更新
+                            remark: existingRemark 
                         };
                         updateStatus(`已更新第 ${state.selectedRowIndex + 1} 列資料`, false);
-                        // 更新完後自動取消選取
                         state.selectedRowIndex = -1;
                     } else {
                         // 新增模式
@@ -441,10 +458,11 @@
                             state.recognizedData.push({
                                 propertyId: item.propertyId || "",
                                 acquisitionDate: item.acquisitionDate || "",
-                                serviceLife: item.serviceLife || "",
-                                propertyName: item.propertyName || "",
                                 specification: item.specification || "",
                                 department: item.department || "",
+                                propertyName: item.propertyName || "",
+                                serviceLife: item.serviceLife || "", // 確保 serviceLife 被新增
+                                remark: "" 
                             });
                         });
                         updateStatus(`辨識完成，新增了 ${validResults.length} 筆資料`, false);
@@ -453,13 +471,12 @@
 
             } catch (error) {
                 console.error('OCR 失敗:', error);
-                updateStatus(`辨識失敗: ${error.message}`, false, true);
-                // 檢查是否為金鑰錯誤 (403)
+                updateStatus(`辨識失敗: ${error.message}`, true); 
                 if (error.message.includes('403') && state.customApiKey) {
                     clearCustomApiKey('自訂金鑰驗證失敗，已自動清除。');
                 }
             } finally {
-                state.isLoading = false;
+                state.loadingJobs--;
                 updateDOM();
                 updateTable();
             }
@@ -467,8 +484,6 @@
 
         /**
          * 呼叫 Gemini API
-         * @param {string} base64Data - Base64 編碼的圖片資料
-         * @returns {Promise<Array<object>>} - 辨識結果的 JSON 陣列
          */
         async function callGeminiAPI(base64Data) {
             const API_KEY = getApiKey();
@@ -506,35 +521,156 @@
             const result = await response.json();
             
             try {
-                const jsonText = result.candidates[0].content.parts[0].text;
+                const candidate = result.candidates?.[0];
+                const part = candidate?.content?.parts?.[0];
+
+                if (!part || !part.text) {
+                    if (candidate?.finishReason === 'SAFETY') {
+                        throw new Error("API 因安全設定阻擋了回應。");
+                    }
+                    if (candidate?.finishReason === 'RECITATION') {
+                         throw new Error("API 因引用限制阻擋了回應。");
+                    }
+                    console.error("未預期的 API 回應結構:", result);
+                    throw new Error("API 回應中未包含有效的文字部分。");
+                }
+
+                const jsonText = part.text;
                 return JSON.parse(jsonText);
             } catch (e) {
                 console.error("解析 API 回應失敗:", e, result);
+                if (e instanceof Error) {
+                    throw new Error(`API 回應解析失敗: ${e.message}`);
+                }
                 throw new Error("API 回應非預期的 JSON 格式。");
             }
         }
 
 
         // --- 表格與 UI 更新 --------------------------------------------------
+        
+        /**
+         * 渲染表頭，並加入拖曳功能
+         */
+        function renderTableHeader() {
+            dom.tableHeaderRow.innerHTML = '';
+            
+            state.columnDefs.forEach((h, index) => {
+                const th = document.createElement('th');
+                th.scope = 'col';
+                // 使用 Tailwind class 但覆寫寬度
+                th.className = 'px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider relative group';
+                
+                // 應用當前寬度
+                const currentWidth = state.columnWidths[h.key];
+                th.style.width = `${currentWidth}px`;
+                th.style.minWidth = `${currentWidth}px`;
+                
+                th.textContent = h.label;
+
+                // 為除最後一欄外的所有欄位加入 Resizer
+                if (index < state.columnDefs.length - 1) { 
+                    const resizer = document.createElement('div');
+                    resizer.className = 'resizer absolute top-0 right-0 w-2 h-full cursor-col-resize';
+                    resizer.dataset.colKey = h.key;
+
+                    resizer.addEventListener('mousedown', handleMouseDown);
+                    th.appendChild(resizer);
+                }
+                
+                dom.tableHeaderRow.appendChild(th);
+            });
+        }
+        
+        /**
+         * 欄位拖曳: 滑鼠按下
+         */
+        function handleMouseDown(e) {
+            if (state.loadingJobs > 0) return; 
+            
+            e.preventDefault();
+            state.resizing = true;
+            state.resizingColKey = e.target.dataset.colKey;
+            state.startPageX = e.pageX;
+            
+            // 取得表頭元素
+            const th = e.target.parentElement;
+            state.startWidth = th.offsetWidth;
+            
+            // 設定全域游標
+            document.body.style.cursor = 'col-resize';
+            
+            // 監聽整個文件
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        /**
+         * 欄位拖曳: 滑鼠移動
+         */
+        function handleMouseMove(e) {
+            if (!state.resizing) return;
+            
+            const dx = e.pageX - state.startPageX;
+            let newWidth = state.startWidth + dx;
+            
+            if (newWidth < state.minWidth) {
+                newWidth = state.minWidth;
+            }
+            
+            // 更新 state
+            state.columnWidths[state.resizingColKey] = newWidth;
+            
+            // 應用新的寬度到表頭
+            const thToResize = dom.tableHeaderRow.querySelector(`[data-col-key="${state.resizingColKey}"]`).parentElement;
+            thToResize.style.width = `${newWidth}px`;
+            thToResize.style.minWidth = `${newWidth}px`;
+
+            // 更新表格內容的寬度
+            updateTable(); 
+        }
+
+        /**
+         * 欄位拖曳: 滑鼠放開
+         */
+        function handleMouseUp() {
+            state.resizing = false;
+            state.resizingColKey = null;
+            document.body.style.cursor = 'default';
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            // 確保所有 td 的寬度更新已經發生
+            updateTable(); 
+        }
 
         /**
          * 更新所有 DOM 元素的狀態
          */
         function updateDOM() {
-            // 辨識按鈕
-            dom.recognizeBtn.disabled = !state.base64Image || state.isLoading;
+            const isLoading = state.loadingJobs > 0;
+            const hasData = state.recognizedData.length > 0;
+
+            if (isLoading) {
+                dom.loadingSpinner.style.display = 'block';
+                dom.statusText.style.display = 'block';
+                dom.statusText.textContent = `正在辨識中... ( ${state.loadingJobs} 個任務)`;
+                dom.statusText.className = 'text-center text-sm text-gray-600 status-message';
+            } else {
+                dom.loadingSpinner.style.display = 'none';
+            }
+
+            dom.apiKeyInput.disabled = false;
+            dom.saveApiKeyBtn.disabled = false;
+            dom.imageUpload.disabled = false;
+            dom.startCameraBtn.disabled = false;
+            dom.recognizeBtn.disabled = !state.base64Image || state.resizing; 
             dom.recognizeBtn.textContent = (state.selectedRowIndex > -1) ? '更新所選列' : '辨識';
             
-            // 右側按鈕
-            const hasData = state.recognizedData.length > 0;
-            dom.copyTableBtn.disabled = !hasData || state.isLoading;
-            dom.exportXlsxBtn.disabled = !hasData || state.isLoading;
-            dom.resetBtn.disabled = !hasData || state.isLoading;
+            dom.copyTableBtn.disabled = !hasData || isLoading || state.resizing;
+            dom.deleteRowBtn.disabled = (state.selectedRowIndex === -1) || isLoading || state.resizing;
+            dom.exportXlsxBtn.disabled = !hasData || isLoading || state.resizing;
+            dom.resetBtn.disabled = !hasData || isLoading || state.resizing;
             
-            // 刪除按鈕
-            dom.deleteRowBtn.disabled = (state.selectedRowIndex === -1) || state.isLoading;
-            
-            // 表格提示
             dom.noDataMsg.style.display = hasData ? 'none' : 'block';
         }
 
@@ -543,86 +679,117 @@
          */
         function updateTable() {
             dom.resultTableBody.innerHTML = ''; // 清空表格
+            
+            // 確保表頭的寬度是最新的 (這對於拖曳後的即時更新很重要)
+            renderTableHeader();
+
             state.recognizedData.forEach((row, index) => {
                 const tr = document.createElement('tr');
                 tr.className = 'cursor-pointer hover:bg-gray-50';
-                tr.dataset.index = index; // 儲存索引
+                tr.dataset.index = index;
 
                 if (index === state.selectedRowIndex) {
-                    tr.classList.add('selected-row'); // 標記選取
+                    tr.classList.add('selected-row');
                 }
 
-                // 建立表格欄位
-                tr.innerHTML = `
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.propertyId}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.acquisitionDate}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.serviceLife}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.propertyName}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.specification}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.department}</td>
-                `;
+                // 根據 columnDefs 和 columnWidths 建立 TD 元素
+                state.columnDefs.forEach(col => {
+                    const td = document.createElement('td');
+                    td.className = 'px-4 py-3 text-base text-gray-700';
+                    const currentWidth = state.columnWidths[col.key];
+                    td.style.width = `${currentWidth}px`;
+                    td.style.minWidth = `${currentWidth}px`;
+                    
+                    if (col.key === 'remark') {
+                        // 備註欄位是輸入框
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = row.remark || '';
+                        input.dataset.index = index;
+                        input.className = 'remark-input w-full border-gray-300 rounded-md shadow-sm text-base focus:border-blue-500 focus:ring-blue-500';
+                        input.addEventListener('input', (e) => {
+                            handleRemarkInput(index, e.target.value);
+                        });
+                        td.appendChild(input);
+                    } else {
+                        // 其他欄位直接顯示文字
+                        td.textContent = row[col.key];
+                    }
+                    tr.appendChild(td);
+                });
                 
                 // 綁定點擊事件
-                tr.addEventListener('click', () => handleRowClick(index));
-                
+                tr.addEventListener('click', (e) => {
+                    if (e.target.tagName.toLowerCase() !== 'input') {
+                        handleRowClick(index);
+                    }
+                });
+
                 dom.resultTableBody.appendChild(tr);
             });
-            updateDOM(); // 更新按鈕狀態
+            updateDOM();
         }
 
         /**
          * 處理表格列點擊事件
-         * @param {number} index - 被點擊的列索引
          */
         function handleRowClick(index) {
-            if (state.isLoading) return; // 載入中禁止操作
+            if (state.loadingJobs > 0 || state.resizing) return; 
 
             if (state.selectedRowIndex === index) {
-                // 再次點擊同一列 = 取消選取
                 state.selectedRowIndex = -1;
             } else {
-                // 點擊新的一列 = 選取
                 state.selectedRowIndex = index;
             }
-            updateTable(); // 重繪表格以更新反白
+            updateTable(); 
+        }
+
+        /**
+         * 處理備註輸入並儲存到 state
+         */
+        function handleRemarkInput(index, value) {
+            if (state.recognizedData[index]) {
+                state.recognizedData[index].remark = value;
+            }
         }
 
         /**
          * 更新狀態訊息
-         * @param {string} text - 顯示的文字
-         * @param {boolean} [isLoading=false] - 是否顯示讀取中
-         * @param {boolean} [isError=false] - 是否為錯誤訊息
          */
-        function updateStatus(text, isLoading = false, isError = false) {
-            // 清除之前的計時器
+        function updateStatus(text, isError = false) {
+            if (state.loadingJobs > 0 && !isError) {
+                if (text) {
+                     dom.statusText.textContent = text;
+                     dom.statusText.className = 'text-center text-sm text-gray-600 status-message';
+                }
+                return; 
+            }
+
             if (updateStatus.timeoutId) {
                 clearTimeout(updateStatus.timeoutId);
                 updateStatus.timeoutId = null;
             }
-
-            if (isLoading) {
-                dom.loadingSpinner.style.display = 'block';
-                dom.statusText.style.display = 'none';
-                dom.statusText.textContent = text; // 仍然設定文字，以便讀取
-            } else {
-                dom.loadingSpinner.style.display = 'none';
-                dom.statusText.style.display = 'block';
-                dom.statusText.textContent = text;
-                
-                dom.statusText.className = isError ? 'text-center text-sm text-red-600 status-message' : 'text-center text-sm text-gray-600 status-message';
-                
-                // 3 秒後自動清除訊息
-                updateStatus.timeoutId = setTimeout(() => {
-                    dom.statusText.style.opacity = '0';
-                    setTimeout(() => { 
-                        dom.statusText.textContent = '';
-                        dom.statusText.style.opacity = '1';
-                    }, 500); // 等待淡出
-                }, 3000);
+            
+            if (state.loadingJobs === 0) {
+                 dom.loadingSpinner.style.display = 'none';
             }
+            
+            dom.statusText.style.display = 'block';
+            dom.statusText.textContent = text;
+            dom.statusText.className = isError ? 'text-center text-sm text-red-600 status-message' : 'text-center text-sm text-gray-600 status-message';
+            
+            updateStatus.timeoutId = setTimeout(() => {
+                dom.statusText.style.opacity = '0';
+                setTimeout(() => { 
+                    if(state.loadingJobs === 0) {
+                        dom.statusText.textContent = '';
+                    }
+                    dom.statusText.style.opacity = '1';
+                }, 500);
+            }, 3000);
         }
 
-        // --- 功能按鈕 -----------------------------------------------------
+        // --- 功能按鈕 (略，與之前相同) -----------------------------------------
 
         /**
          * 刪除所選列
@@ -630,8 +797,8 @@
         function deleteSelectedRow() {
             if (state.selectedRowIndex > -1) {
                 state.recognizedData.splice(state.selectedRowIndex, 1);
-                state.selectedRowIndex = -1; // 清除選取
-                updateTable(); // 更新表格
+                state.selectedRowIndex = -1; 
+                updateTable(); 
                 updateStatus('已刪除所選列', false);
             }
         }
@@ -642,30 +809,23 @@
         function exportToXLSX() {
             if (state.recognizedData.length === 0) return;
 
-            // 1. 準備表頭
-            const headers = ["財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位"];
+            const headers = state.columnDefs.map(c => c.label);
             
-            // 2. 準備資料陣列 (陣列的陣列)
-            const data = state.recognizedData.map(row => [
-                row.propertyId,
-                row.acquisitionDate,
-                row.serviceLife,
-                row.propertyName,
-                row.specification,
-                row.department
-            ]);
+            const data = state.recognizedData.map(row => state.columnDefs.map(col => {
+                // 處理備註欄位
+                if (col.key === 'remark') {
+                    return row.remark || "";
+                }
+                return row[col.key];
+            }));
 
-            // 3. 將表頭加入資料
             const exportData = [headers, ...data];
 
-            // 4. 建立工作表
             const ws = XLSX.utils.aoa_to_sheet(exportData);
             
-            // 5. 建立工作簿
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "財產清單");
 
-            // 6. 產生並下載檔案
             XLSX.writeFile(wb, "財產清單.xlsx");
             updateStatus('已匯出 XLSX 檔案', false);
         }
@@ -676,20 +836,17 @@
         function copyTableData() {
             if (state.recognizedData.length === 0) return;
 
-            const headers = ["財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位"].join('\t');
+            const headers = state.columnDefs.map(c => c.label).join('\t');
             
-            const data = state.recognizedData.map(row => [
-                row.propertyId,
-                row.acquisitionDate,
-                row.serviceLife,
-                row.propertyName,
-                row.specification,
-                row.department
-            ].join('\t')).join('\n');
+            const data = state.recognizedData.map(row => state.columnDefs.map(col => {
+                if (col.key === 'remark') {
+                    return row.remark || "";
+                }
+                return row[col.key];
+            }).join('\t')).join('\n');
 
             const tsvData = headers + '\n' + data;
 
-            // 複製到剪貼簿
             const textArea = document.createElement("textarea");
             textArea.value = tsvData;
             document.body.appendChild(textArea);
@@ -699,7 +856,7 @@
                 updateStatus('表格資料已複製！', false);
             } catch (err) {
                 console.error('無法複製:', err);
-                updateStatus('複製失敗', false, true);
+                updateStatus('複製失敗', true); 
             }
             document.body.removeChild(textArea);
         }
@@ -739,13 +896,12 @@
         
         window.onload = () => {
             setupEventListeners();
-            loadCustomApiKey(); // 頁面載入時檢查儲存的金鑰
-            updateDOM(); // 初始化按鈕狀態
-            updateTable(); // 初始化表格 (顯示 "尚無資料")
+            loadCustomApiKey();
+            renderTableHeader(); // 初始渲染表頭
+            updateDOM();
+            updateTable();
         };
 
     </script>
 </body>
 </html>
-
-
