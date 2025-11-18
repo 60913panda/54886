@@ -8,6 +8,27 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 載入 SheetJS (XLSX 匯出) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- 定義 Google API 回呼函式 -->
+    <script>
+        var gapiScriptLoaded = false;
+        var gisScriptLoaded = false;
+        
+        function gapiLoaded() {
+            console.log('GAPI script has loaded.');
+            gapiScriptLoaded = true;
+        }
+        
+        function gisLoaded() {
+            console.log('GIS script has loaded.');
+            gisScriptLoaded = true;
+        }
+    </script>
+    
+    <!-- 載入 Google API Client 和 Google Identity Services -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+
     <style>
         /* 自訂樣式 */
         body {
@@ -26,20 +47,42 @@
         .selected-row {
             background-color: #dbeafe !important; /* Tailwind blue-100 */
         }
+        /* 教學區塊樣式 */
+        .guide-step {
+            margin-bottom: 0.5rem;
+        }
+        .guide-step h4 {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+        .guide-step p, .guide-step li {
+            font-size: 0.875rem;
+            color: #4b5563;
+            line-height: 1.5;
+        }
+        .guide-code {
+            background-color: #f3f4f6;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            color: #ef4444;
+            font-size: 0.85em;
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4 relative">
     <div class="container mx-auto max-w-6xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row" style="min-height: 80vh;">
 
         <!-- 左側：輸入面板 -->
         <div class="w-full md:w-1/3 bg-gray-50 p-6 border-r border-gray-200 flex flex-col">
             <h1 class="text-2xl font-bold text-gray-800 mb-6">辨識工具</h1>
 
-            <!-- API 金鑰設定 -->
+            <!-- API 金鑰設定 (Gemini) -->
             <div class="mb-4">
-                <label for="api-key-input" class="block text-sm font-medium text-gray-700 mb-1">自訂 API 金鑰</label>
+                <label for="api-key-input" class="block text-sm font-medium text-gray-700 mb-1">Gemini API 金鑰</label>
                 <div class="flex gap-2">
-                    <input type="password" id="api-key-input" class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="請輸入完整的 API 金鑰">
+                    <input type="password" id="api-key-input" class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="請輸入完整的 Gemini API 金鑰">
                     <button id="save-api-key-btn" class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">儲存</button>
                 </div>
                 <p id="api-key-status" class="text-xs text-gray-500 mt-1"></p>
@@ -92,57 +135,175 @@
         </div>
 
         <!-- 右側：結果面板 -->
-        <div class="w-full md:w-2/3 p-6 flex flex-col">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">辨識結果</h2>
+        <div class="w-full md:w-2/3 p-6 flex flex-col" style="min-height: 80vh;">
             
-            <!-- 操作按鈕 -->
-            <div class="flex flex-wrap gap-2 mb-4">
-                <button id="copy-table-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400" disabled>複製表格</button>
-                <button id="delete-row-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400" disabled>刪除所選列</button>
-                <button id="export-xlsx-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400" disabled>匯出 XLSX</button>
-                <button id="reset-btn" class="ml-auto px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-400" disabled>清空</button>
+            <!-- 上半部：辨識結果 -->
+            <div class="flex flex-col" style="height: 45vh;">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">辨識結果</h2>
+                
+                <!-- 操作按鈕 -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button id="copy-table-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400" disabled>複製資料 (TSV)</button>
+                    <button id="delete-row-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400" disabled>刪除所選列</button>
+                    <button id="export-xlsx-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400" disabled>匯出 XLSX</button>
+                    <button id="reset-btn" class="ml-auto px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-400" disabled>清空</button>
+                </div>
+
+                <!-- 結果表格 (固定高度) -->
+                <div class="flex-1 overflow-auto border border-gray-200 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">財產編號</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">取得日期</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用年限</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">財產名稱</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">規格</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">保管單位</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">備註</th>
+                            </tr>
+                        </thead>
+                        <tbody id="result-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- JS 動態填入 -->
+                        </tbody>
+                    </table>
+                    <p id="no-data-msg" class="text-center text-gray-500 py-10">尚無辨識資料</p>
+                </div>
             </div>
 
-            <!-- (新) Google 試算表匯出 -->
-            <div class="border-t border-gray-200 pt-4 mt-4">
-                <label for="google-sheet-link" class="block text-sm font-medium text-gray-700">匯出至 Google 試算表</label>
-                <div class="mt-1 flex flex-col sm:flex-row gap-2">
-                    <input type="url" id="google-sheet-link" class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100" placeholder="貼上 Google 試算表連結..." disabled>
-                    <button id="copy-to-g-sheet-btn" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400" disabled>
-                        1. 複製資料 & 2. 開啟連結
+            <!-- 下半部：Google 試算表整合 -->
+            <div class="flex flex-col border-t border-gray-200 mt-6 pt-6" style="height: 50vh;">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Google 試算表整合</h2>
+                
+                <!-- 模式切換 -->
+                <div class="flex gap-4 mb-4">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="sheet-mode" id="mode-simple" value="simple" class="form-radio text-blue-600 focus:ring-blue-500" checked>
+                        <span class="ml-2 text-sm font-medium text-gray-700">簡易模式 (複製 & 開啟)</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="sheet-mode" id="mode-complex" value="complex" class="form-radio text-blue-600 focus:ring-blue-500">
+                        <span class="ml-2 text-sm font-medium text-gray-700">API 模式 (自動寫入)</span>
+                    </label>
+                </div>
+
+                <!-- 簡易模式 UI -->
+                <div id="simple-mode-ui" class="flex flex-col flex-1">
+                    <div class="flex flex-col gap-2 mb-2">
+                        <label for="google-sheet-link-simple" class="block text-sm font-medium text-gray-700">Google 試算表網址</label>
+                        <input type="url" id="google-sheet-link-simple" class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="貼上 Google 試算表網址 (https://docs.google.com/...)">
+                        <button id="copy-and-open-g-sheet-btn" class="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400" disabled>
+                            1. 複製資料 & 2. 開啟連結
+                        </button>
+                    </div>
+                    <p class="mb-4 text-xs text-gray-500">提示：按下按鈕後，在新分頁的試算表上按 Ctrl+V 貼上。</p>
+                </div>
+
+                <!-- API 模式 UI (預設隱藏) -->
+                <div id="complex-mode-ui" class="hidden flex-1 flex-col overflow-y-auto">
+                    <!-- 說明按鈕 -->
+                    <button id="open-guide-btn" class="mb-4 text-left text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        如何取得 Google Cloud Client ID 與 API Key？ (點擊查看教學)
+                    </button>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="gcp-client-id" class="block text-sm font-medium text-gray-700">Google Cloud Client ID</label>
+                            <input type="password" id="gcp-client-id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="輸入您的 Client ID">
+                        </div>
+                        <div>
+                            <label for="gcp-api-key" class="block text-sm font-medium text-gray-700">Google Cloud API Key</label>
+                            <input type="password" id="gcp-api-key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="輸入您的 API Key (用於 GAPI)">
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mb-4">
+                        <button id="init-auth-btn" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                            1. 初始化並登入 Google
+                        </button>
+                        <button id="sign-out-btn" class="hidden px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            登出
+                        </button>
+                        <p id="auth-status" class="ml-4 flex items-center text-sm text-gray-500">狀態：尚未登入</p>
+                    </div>
+                    <div class="border-t border-gray-200 pt-4">
+                        <label for="spreadsheet-id-input" class="block text-sm font-medium text-gray-700">Google 試算表 ID (或網址)</label>
+                        <input type="text" id="spreadsheet-id-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="貼上 ID 或完整試算表網址">
+                        <p class="mt-1 text-xs text-gray-500">程式會自動從網址中擷取 ID</p>
+                    </div>
+                    <button id="append-to-sheet-btn" class="mt-4 w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400" disabled>
+                        2. 寫入資料至 Google Sheet
                     </button>
                 </div>
-                <p class="mt-1 text-xs text-gray-500">提示：按下按鈕後，在新分頁的儲存格中貼上 (Ctrl+V) 即可。</p>
             </div>
+            
+        </div>
+    </div>
 
-            <!-- 結果表格 -->
-            <div class="flex-1 overflow-auto border border-gray-200 rounded-lg mt-4">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50 sticky top-0 z-10">
-                        <tr>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">財產編號</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">取得日期</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用年限</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">財產名稱</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">規格</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">保管單位</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">備註</th>
-                        </tr>
-                    </thead>
-                    <tbody id="result-table-body" class="bg-white divide-y divide-gray-200">
-                        <!-- 範例，會被 JS 取代 -->
-                        <tr class="hidden">
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">12345</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">2025-10-28</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">5</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">電腦</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">i5/16G/512G</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">資訊室</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500"><input type="text"></td>
-                        </tr>
-                    </tbody>
-                </table>
-                <p id="no-data-msg" class="text-center text-gray-500 py-10">尚無辨識資料</p>
+    <!-- 全螢幕教學 Modal -->
+    <div id="guide-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <!-- 背景遮罩 -->
+        <div id="guide-modal-backdrop" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <!-- Modal 內容 -->
+                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+                    <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mt-3 text-left sm:mt-0 sm:w-full">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">Google Cloud API 設定教學</h3>
+                                    <button id="close-modal-x" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                                        <span class="sr-only">Close</span>
+                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <div class="mt-2 max-h-[60vh] overflow-y-auto pr-2">
+                                    <ol class="list-decimal list-inside space-y-4 text-sm text-gray-600">
+                                        <li class="guide-step">
+                                            <h4>1. 建立專案</h4>
+                                            <p>前往 <a href="https://console.cloud.google.com/" target="_blank" class="text-blue-600 underline hover:text-blue-800">Google Cloud Console</a>，建立一個新專案。</p>
+                                        </li>
+                                        <li class="guide-step">
+                                            <h4>2. 啟用 Google Sheets API</h4>
+                                            <p>在左側選單點選「API 和服務」 > 「資料庫」，搜尋 <span class="guide-code">Google Sheets API</span> 並啟用它。</p>
+                                        </li>
+                                        <li class="guide-step">
+                                            <h4>3. 設定 OAuth 同意畫面</h4>
+                                            <p>點選「API 和服務」 > 「OAuth 同意畫面」。
+                                            <ul class="list-disc list-inside ml-4 mt-1">
+                                                <li>User Type 選擇「外部 (External)」。</li>
+                                                <li>填寫應用程式名稱和聯絡信箱。</li>
+                                                <li>在「範圍 (Scopes)」步驟，搜尋並新增 <span class="guide-code">.../auth/spreadsheets</span>。</li>
+                                                <li>在「測試使用者」步驟，加入您自己的 Gmail 帳號。</li>
+                                            </ul>
+                                            </p>
+                                        </li>
+                                        <li class="guide-step">
+                                            <h4>4. 建立憑證 (Credentials)</h4>
+                                            <p>點選「API 和服務」 > 「憑證」，點擊上方「建立憑證」。</p>
+                                            <ul class="list-disc list-inside ml-4 mt-1 space-y-2">
+                                                <li><strong>API 金鑰：</strong> 選擇「API 金鑰」，建立後複製下來。這是您的 <span class="font-semibold">Google Cloud API Key</span>。</li>
+                                                <li><strong>OAuth 用戶端 ID：</strong> 
+                                                    <br>選擇應用程式類型為「網頁應用程式 (Web Application)」。
+                                                    <br>在「已授權的 JavaScript 來源」中，如果您是在本機執行，請加入 <span class="guide-code">http://localhost</span> 和 <span class="guide-code">http://127.0.0.1</span>。如果是透過 file:// 開啟，可能需要架設簡易的本地伺服器。
+                                                    <br>建立後，複製您的「用戶端編號 (Client ID)」。這是您的 <span class="font-semibold">Google Cloud Client ID</span>。
+                                                </li>
+                                            </ul>
+                                        </li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button id="close-modal-btn" type="button" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">關閉</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -172,22 +333,54 @@
             resetBtn: document.getElementById('reset-btn'),
             resultTableBody: document.getElementById('result-table-body'),
             noDataMsg: document.getElementById('no-data-msg'),
-            // (新) Google Sheet
-            googleSheetLink: document.getElementById('google-sheet-link'),
-            copyToGSheetBtn: document.getElementById('copy-to-g-sheet-btn'),
+            
+            // Google Sheet 模式切換
+            modeSimpleRadio: document.getElementById('mode-simple'),
+            modeComplexRadio: document.getElementById('mode-complex'),
+            
+            // 簡易模式 UI
+            simpleModeUi: document.getElementById('simple-mode-ui'),
+            googleSheetLinkSimple: document.getElementById('google-sheet-link-simple'),
+            copyAndOpenGSheetBtn: document.getElementById('copy-and-open-g-sheet-btn'),
+
+            // API 模式 UI
+            complexModeUi: document.getElementById('complex-mode-ui'),
+            gcpClientIdInput: document.getElementById('gcp-client-id'),
+            gcpApiKeyInput: document.getElementById('gcp-api-key'),
+            initAuthBtn: document.getElementById('init-auth-btn'),
+            signOutBtn: document.getElementById('sign-out-btn'),
+            authStatus: document.getElementById('auth-status'),
+            spreadsheetIdInput: document.getElementById('spreadsheet-id-input'),
+            appendToSheetBtn: document.getElementById('append-to-sheet-btn'),
+            
+            // 教學 Modal
+            openGuideBtn: document.getElementById('open-guide-btn'),
+            guideModal: document.getElementById('guide-modal'),
+            closeModalBtn: document.getElementById('close-modal-btn'),
+            closeModalX: document.getElementById('close-modal-x'),
+            guideModalBackdrop: document.getElementById('guide-modal-backdrop'),
         };
 
         // 應用程式狀態管理
         const state = {
             base64Image: null,
             stream: null,
-            customApiKey: null, // 儲存自訂金鑰 (完整的金鑰)
-            recognizedData: [], // 儲存所有辨識出的列 (包含備註)
-            selectedRowIndex: -1, // 目前選取的列 (-1 表示沒有選取)
-            loadingJobs: 0, // 辨識中任務的計數器
+            customApiKey: null, // Gemini API Key
+            recognizedData: [], 
+            selectedRowIndex: -1, 
+            loadingJobs: 0,
+            
+            // Google API 狀態
+            sheetMode: 'simple', // 'simple' or 'complex'
+            gcpClientId: null,
+            gcpApiKey: null,
+            gapiInited: false,
+            gisInited: false,
+            tokenClient: null,
+            isAuthorized: false,
         };
 
-        // API 提示
+        // API 提示 (Gemini)
         const API_PROMPT = 
 "你是一個高準確度的 OCR 辨識助理。\n" +
 "你的任務是辨識圖片中的財產標籤文字，並只回傳一個 JSON 陣列。\n" +
@@ -216,23 +409,258 @@
 "- **請忽略圖片底部任何關於「109年度中小學資訊科技教室電腦設備汰舊換新」的文字。**\n" +
 "- 不要回傳 \"json\" 或 \"```\" 標記，直接回傳 JSON 陣列本身。\n";
 
-        // --- API 金鑰管理 -----------------------------------------------------
+        // --- Google API 初始化 (API 模式) --------------------------------
+        
+        const DISCOVERY_DOC = '[https://sheets.googleapis.com/$discovery/rest?version=v4](https://sheets.googleapis.com/$discovery/rest?version=v4)';
+        const SCOPES = '[https://www.googleapis.com/auth/spreadsheets](https://www.googleapis.com/auth/spreadsheets)';
 
-        /**
-         * 載入儲存的自訂 API 金鑰
-         */
+        async function initializeGapiClient() {
+            if (!state.gcpApiKey) {
+                console.warn("GCP API Key 尚未設定。");
+                return;
+            }
+            try {
+                await gapi.client.init({
+                    apiKey: state.gcpApiKey,
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                state.gapiInited = true;
+                console.log("GAPI client initialized.");
+                updateAuthUI();
+            } catch (error) {
+                console.error("Error initializing GAPI client:", error);
+                updateStatus('GAPI Client 初始化失敗', true);
+            }
+        }
+
+        function initAuth() {
+            state.gcpClientId = dom.gcpClientIdInput.value.trim();
+            state.gcpApiKey = dom.gcpApiKeyInput.value.trim();
+
+            if (!state.gcpClientId || !state.gcpApiKey) {
+                updateStatus('請輸入 GCP Client ID 和 GCP API Key', true);
+                return;
+            }
+            
+            updateStatus('正在初始化 Google API...', false);
+            dom.initAuthBtn.disabled = true;
+
+            localStorage.setItem('gcpClientId', state.gcpClientId);
+            localStorage.setItem('gcpApiKey', state.gcpApiKey);
+            
+            if (typeof gapi === 'undefined' || typeof google === 'undefined' || !window.gapiScriptLoaded || !window.gisScriptLoaded) {
+                 updateStatus('Google API 腳本載入中，請稍後再試', true);
+                 dom.initAuthBtn.disabled = false;
+                 return;
+            }
+
+            gapi.load('client', initializeGapiClient);
+            state.gisInited = true; 
+
+            try {
+                state.tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: state.gcpClientId,
+                    scope: SCOPES,
+                    callback: authCallback,
+                });
+            } catch (error) {
+                console.error("Error initializing GIS client:", error);
+                updateStatus('GIS Client 初始化失敗', true);
+                dom.initAuthBtn.disabled = false;
+                return;
+            }
+                
+            const checkReadyInterval = setInterval(() => {
+                if (state.gapiInited && state.gisInited && state.tokenClient) { 
+                    clearInterval(checkReadyInterval);
+                    dom.initAuthBtn.disabled = false;
+                    updateStatus('初始化完成，請登入', false);
+                    handleAuthClick();
+                }
+            }, 100);
+        }
+
+        function handleAuthClick() {
+            if (state.tokenClient) {
+                state.tokenClient.requestAccessToken();
+            } else {
+                updateStatus('GIS client 尚未初始化', true);
+            }
+        }
+
+        function handleSignoutClick() {
+            const token = gapi.client.getToken();
+            if (token) {
+                google.accounts.oauth2.revoke(token.access_token, () => {
+                    gapi.client.setToken(null);
+                    state.isAuthorized = false;
+                    updateAuthUI();
+                    updateStatus('已登出 Google', false);
+                });
+            }
+        }
+
+        function authCallback(tokenResponse) {
+            if (tokenResponse && tokenResponse.access_token) {
+                gapi.client.setToken(tokenResponse);
+                state.isAuthorized = true;
+                updateAuthUI();
+                updateStatus('Google 登入成功', false);
+            } else {
+                console.error("Invalid token response:", tokenResponse);
+                updateStatus('Google 登入失敗', true);
+                state.isAuthorized = false;
+                updateAuthUI();
+            }
+        }
+        
+        function updateAuthUI() {
+            if (state.isAuthorized) {
+                dom.authStatus.textContent = '狀態：已登入';
+                dom.authStatus.className = 'ml-4 flex items-center text-sm text-green-600';
+                dom.initAuthBtn.style.display = 'none';
+                dom.signOutBtn.style.display = 'block';
+                dom.appendToSheetBtn.disabled = state.recognizedData.length === 0 || state.loadingJobs > 0;
+            } else {
+                dom.authStatus.textContent = '狀態：尚未登入';
+                dom.authStatus.className = 'ml-4 flex items-center text-sm text-gray-500';
+                dom.initAuthBtn.style.display = 'block';
+                dom.signOutBtn.style.display = 'none';
+                dom.appendToSheetBtn.disabled = true;
+            }
+        }
+        
+        function loadGcpCredentials() {
+            const savedClientId = localStorage.getItem('gcpClientId');
+            const savedApiKey = localStorage.getItem('gcpApiKey');
+            if (savedClientId) {
+                dom.gcpClientIdInput.value = savedClientId;
+            }
+            if (savedApiKey) {
+                dom.gcpApiKeyInput.value = savedApiKey;
+            }
+        }
+        
+        // --- Google Sheet 寫入 (API 模式) --------------------------------
+
+        async function appendToGoogleSheet() {
+            if (!state.isAuthorized) {
+                updateStatus('請先登入 Google', true);
+                return;
+            }
+            
+            let spreadsheetId = dom.spreadsheetIdInput.value.trim();
+            const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            if (match && match[1]) {
+                spreadsheetId = match[1];
+                dom.spreadsheetIdInput.value = spreadsheetId;
+            }
+
+            if (!spreadsheetId) {
+                updateStatus('請輸入 Google 試算表 ID', true);
+                return;
+            }
+            
+            if (state.recognizedData.length === 0) {
+                updateStatus('沒有資料可寫入', true);
+                return;
+            }
+            
+            updateStatus('正在寫入 Google Sheet...', false);
+            dom.appendToSheetBtn.disabled = true;
+            
+            try {
+                const headers = ["財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位", "備註"];
+                const data = state.recognizedData.map(row => [
+                    row.propertyId,
+                    row.acquisitionDate,
+                    row.serviceLife,
+                    row.propertyName,
+                    row.specification,
+                    row.department,
+                    row.remark || ""
+                ]);
+                
+                const getResponse = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: spreadsheetId,
+                    range: 'Sheet1!A1:G1',
+                });
+
+                let valuesToAppend = [];
+                if (!getResponse.result.values || getResponse.result.values.length === 0) {
+                    valuesToAppend = [headers, ...data];
+                } else {
+                    valuesToAppend = data;
+                }
+
+                const response = await gapi.client.sheets.spreadsheets.values.append({
+                    spreadsheetId: spreadsheetId,
+                    range: 'Sheet1!A1',
+                    valueInputOption: 'USER_ENTERED',
+                    resource: {
+                        values: valuesToAppend,
+                    },
+                });
+                
+                console.log('Append response:', response);
+                const cellsAppended = response.result.updates.updatedCells;
+                updateStatus(`成功寫入 ${cellsAppended} 個儲存格`, false);
+                
+            } catch (err) {
+                console.error('寫入 Google Sheet 失敗:', err);
+                let errorMsg = '寫入 Google Sheet 失敗';
+                if (err && err.result && err.result.error) {
+                    errorMsg = err.result.error.message || errorMsg;
+                }
+                if (err.status === 404) {
+                    errorMsg = "找不到試算表，請檢查 ID 是否正確";
+                } else if (err.status === 403) {
+                     errorMsg = "權限不足，請確認已啟用 Sheets API 且金鑰正確";
+                }
+                updateStatus(errorMsg, true);
+            } finally {
+                dom.appendToSheetBtn.disabled = !state.isAuthorized;
+            }
+        }
+
+        // --- Google Sheet 複製並開啟 (簡易模式) --------------------------
+        
+        function copyAndOpenGoogleSheet() {
+            const url = dom.googleSheetLinkSimple.value.trim();
+            if (!url.startsWith('http')) {
+                updateStatus('請輸入有效的 Google 試算表網址', true);
+                return;
+            }
+            
+            const copySuccess = copyTableData();
+            if (!copySuccess) {
+                updateStatus('複製資料失敗', true);
+                return;
+            }
+            
+            try {
+                window.open(url, '_blank');
+                updateStatus('資料已複製，請在新分頁貼上！', false);
+            } catch (e) {
+                console.error("開啟新分頁失敗:", e);
+                updateStatus('資料已複製，但開啟新分頁失敗。', true);
+            }
+        }
+
+
+        // --- API 金鑰管理 (Gemini) --------------------------------------------
+
         function loadCustomApiKey() {
             const savedKey = localStorage.getItem('customGeminiApiKey');
             if (savedKey) {
-                // 驗證金鑰
                 testApiKey(savedKey, (isValid) => {
                     if (isValid) {
                         state.customApiKey = savedKey;
-                        dom.apiKeyInput.value = savedKey; // 顯示金鑰於輸入框
+                        dom.apiKeyInput.value = savedKey;
                         dom.currentApiKeyDisplay.textContent = '自訂金鑰 (...' + savedKey.slice(-4) + ')';
                         dom.currentApiKeyDisplay.className = "font-medium text-blue-600";
                     } else {
-                        clearCustomApiKey('自訂金鑰驗證失敗，已自動清除。');
+                        clearCustomApiKey('Gemini 金鑰驗證失敗，已清除。');
                     }
                 });
             } else {
@@ -241,67 +669,50 @@
             }
         }
 
-        /**
-         * 儲存自訂 API 金鑰
-         */
         function saveCustomApiKey() {
             const keyInput = dom.apiKeyInput.value.trim();
             if (keyInput) {
                 const fullKey = keyInput;
-                
-                // 測試金鑰
-                updateStatus('正在驗證金鑰...', false);
+                updateStatus('正在驗證 Gemini 金鑰...', false);
                 dom.saveApiKeyBtn.disabled = true;
 
                 testApiKey(fullKey, (isValid) => {
                     dom.saveApiKeyBtn.disabled = false;
-
                     if (isValid) {
                         localStorage.setItem('customGeminiApiKey', fullKey);
                         state.customApiKey = fullKey;
                         dom.apiKeyInput.value = fullKey;
-                        
-                        dom.apiKeyStatus.textContent = '金鑰已儲存並驗證成功！';
+                        dom.apiKeyStatus.textContent = 'Gemini 金鑰已儲存！';
                         dom.apiKeyStatus.className = 'text-xs text-green-600 mt-1';
                         dom.currentApiKeyDisplay.textContent = '自訂金鑰 (...' + fullKey.slice(-4) + ')';
                         dom.currentApiKeyDisplay.className = "font-medium text-blue-600";
-                        
                         setTimeout(() => { dom.apiKeyStatus.textContent = ''; }, 3000);
                         updateStatus('', false);
                     } else {
-                        clearCustomApiKey('金鑰驗證失敗，請檢查金鑰。');
-                        updateStatus('金鑰驗證失敗', true);
+                        clearCustomApiKey('Gemini 金鑰驗證失敗。');
+                        updateStatus('Gemini 金鑰驗證失敗', true);
                     }
                 });
             } else {
-                // 如果輸入為空，則清除金鑰
-                clearCustomApiKey('已清除自訂金鑰，將使用預設金鑰。', 'text-gray-600');
+                clearCustomApiKey('已清除 Gemini 金鑰。', 'text-gray-600');
             }
         }
 
-        /**
-         * 測試 API 金鑰是否有效
-         */
         async function testApiKey(key, callback) {
             const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: "test" }] }]
-                    })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "test" }] }] })
                 });
                 callback(response.ok);
             } catch (error) {
-                console.error('API Key test failed:', error);
+                console.error('Gemini API Key test failed:', error);
                 callback(false);
             }
         }
 
-        /**
-         * 清除自訂 API 金鑰
-         */
         function clearCustomApiKey(message, colorClass = 'text-red-600') {
             localStorage.removeItem('customGeminiApiKey');
             state.customApiKey = null;
@@ -313,9 +724,6 @@
             setTimeout(() => { dom.apiKeyStatus.textContent = ''; }, 3000);
         }
 
-        /**
-         * 獲取目前有效的 API 金鑰
-         */
         function getApiKey() {
             return state.customApiKey || "";
         }
@@ -372,48 +780,39 @@
                 canvas.height = dom.videoFeed.videoHeight;
                 const context = canvas.getContext('2d');
                 context.drawImage(dom.videoFeed, 0, 0, canvas.width, canvas.height);
-                
                 const dataUrl = canvas.toDataURL('image/jpeg');
                 dom.imagePreview.src = dataUrl;
                 state.base64Image = dataUrl.split(',')[1];
-                
                 stopCamera();
                 updateStatus('照片已擷取', false);
                 updateDOM();
             }
         }
 
-        // --- 核心辨識邏輯 ---------------------------------------------------
+        // --- 核心辨識邏輯 (Gemini) --------------------------------------------
 
         async function performOCR() {
             if (!state.base64Image) {
                 updateStatus('請先上傳圖片或拍照', true);
                 return;
             }
-
             state.loadingJobs++;
             updateDOM();
-
             try {
                 const result = await callGeminiAPI(state.base64Image);
-                
                 if (!Array.isArray(result)) {
                     throw new Error("API 未回傳預期的陣列格式。");
                 }
-
                 const validResults = result.filter(item => 
                     item.propertyId || item.acquisitionDate || item.serviceLife || 
                     item.propertyName || item.specification || item.department
                 );
-
                 if (validResults.length === 0) {
                     updateStatus('辨識完成，但未找到有效資料。', false);
                 } else {
                     if (state.selectedRowIndex > -1) {
-                        // 更新模式
                         const updatedRow = validResults[0] || {};
                         const existingRemark = state.recognizedData[state.selectedRowIndex].remark || "";
-                        
                         state.recognizedData[state.selectedRowIndex] = {
                             propertyId: updatedRow.propertyId || "",
                             acquisitionDate: updatedRow.acquisitionDate || "",
@@ -426,7 +825,6 @@
                         updateStatus(`已更新第 ${state.selectedRowIndex + 1} 列資料`, false);
                         state.selectedRowIndex = -1;
                     } else {
-                        // 新增模式
                         validResults.forEach(item => {
                             state.recognizedData.push({
                                 propertyId: item.propertyId || "",
@@ -441,12 +839,11 @@
                         updateStatus(`辨識完成，新增了 ${validResults.length} 筆資料`, false);
                     }
                 }
-
             } catch (error) {
                 console.error('OCR 失敗:', error);
                 updateStatus(`辨識失敗: ${error.message}`, true);
-                if (error.message.includes('403') && state.customApiKey) {
-                    clearCustomApiKey('自訂金鑰驗證失敗，已自動清除。');
+                if ((error.message.includes('401') || error.message.includes('403')) && state.customApiKey) {
+                    clearCustomApiKey('Gemini 金鑰驗證失敗，已清除。');
                 }
             } finally {
                 state.loadingJobs--;
@@ -458,18 +855,12 @@
         async function callGeminiAPI(base64Data) {
             const API_KEY = getApiKey();
             const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
-
             const payload = {
                 contents: [
                     {
                         parts: [
                             { text: API_PROMPT },
-                            {
-                                inlineData: {
-                                    mimeType: "image/jpeg",
-                                    data: base64Data
-                                }
-                            }
+                            { inlineData: { mimeType: "image/jpeg", data: base64Data } }
                         ]
                     }
                 ],
@@ -477,19 +868,15 @@
                     responseMimeType: "application/json",
                 }
             };
-
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-
             if (!response.ok) {
                 throw new Error(`API 請求失敗，狀態碼: ${response.status}`);
             }
-
             const result = await response.json();
-            
             try {
                 const jsonText = result.candidates[0].content.parts[0].text;
                 return JSON.parse(jsonText);
@@ -499,15 +886,12 @@
             }
         }
 
-
         // --- 表格與 UI 更新 --------------------------------------------------
 
         function updateDOM() {
             const isLoading = state.loadingJobs > 0;
             const hasData = state.recognizedData.length > 0;
-            const hasGSheetLink = dom.googleSheetLink.value.trim().length > 0;
 
-            // 狀態文字和讀取中
             if (isLoading) {
                 dom.loadingSpinner.style.display = 'block';
                 dom.statusText.style.display = 'block';
@@ -517,7 +901,6 @@
                 dom.loadingSpinner.style.display = 'none';
             }
 
-            // 左側按鈕
             dom.apiKeyInput.disabled = false;
             dom.saveApiKeyBtn.disabled = false;
             dom.imageUpload.disabled = false;
@@ -525,18 +908,19 @@
             dom.recognizeBtn.disabled = !state.base64Image;
             dom.recognizeBtn.textContent = (state.selectedRowIndex > -1) ? '更新所選列' : '辨識';
             
-            // 右側按鈕
             dom.copyTableBtn.disabled = !hasData || isLoading;
             dom.deleteRowBtn.disabled = (state.selectedRowIndex === -1) || isLoading;
             dom.exportXlsxBtn.disabled = !hasData || isLoading;
             dom.resetBtn.disabled = !hasData || isLoading;
             
-            // (新) Google Sheet 區塊
-            dom.googleSheetLink.disabled = !hasData || isLoading;
-            dom.copyToGSheetBtn.disabled = !hasData || isLoading || !hasGSheetLink;
-
-            // 表格提示
-            dom.noDataMsg.style.display = hasData ? 'none' : 'block';
+            // 根據模式更新 UI
+            if (state.sheetMode === 'simple') {
+                dom.copyTableBtn.textContent = '複製資料 (TSV)';
+                dom.copyAndOpenGSheetBtn.disabled = !hasData || isLoading;
+            } else {
+                dom.copyTableBtn.textContent = '複製資料 (TSV)';
+                updateAuthUI();
+            }
         }
 
         function updateTable() {
@@ -545,11 +929,9 @@
                 const tr = document.createElement('tr');
                 tr.className = 'cursor-pointer hover:bg-gray-50';
                 tr.dataset.index = index;
-
                 if (index === state.selectedRowIndex) {
                     tr.classList.add('selected-row');
                 }
-
                 tr.innerHTML = `
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.propertyId}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.acquisitionDate}</td>
@@ -557,22 +939,19 @@
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.propertyName}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.specification}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${row.department}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    <td class="px-4 py-3 whitespace-nowLrap text-sm text-gray-700">
                         <input type="text" value="${row.remark || ''}" data-index="${index}" class="remark-input w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
                     </td>
                 `;
-                
                 tr.addEventListener('click', (e) => {
                     if (e.target.tagName.toLowerCase() !== 'input') {
                         handleRowClick(index);
                     }
                 });
-                
                 const remarkInput = tr.querySelector('.remark-input');
                 remarkInput.addEventListener('input', (e) => {
                     handleRemarkInput(index, e.target.value);
                 });
-
                 dom.resultTableBody.appendChild(tr);
             });
             updateDOM();
@@ -580,7 +959,6 @@
 
         function handleRowClick(index) {
             if (state.loadingJobs > 0) return;
-
             if (state.selectedRowIndex === index) {
                 state.selectedRowIndex = -1;
             } else {
@@ -599,20 +977,16 @@
             if (state.loadingJobs > 0 && !isError) {
                 return;
             }
-
             if (updateStatus.timeoutId) {
                 clearTimeout(updateStatus.timeoutId);
                 updateStatus.timeoutId = null;
             }
-            
             if (state.loadingJobs === 0) {
                  dom.loadingSpinner.style.display = 'none';
             }
-            
             dom.statusText.style.display = 'block';
             dom.statusText.textContent = text;
             dom.statusText.className = isError ? 'text-center text-sm text-red-600 status-message' : 'text-center text-sm text-gray-600 status-message';
-            
             updateStatus.timeoutId = setTimeout(() => {
                 dom.statusText.style.opacity = '0';
                 setTimeout(() => { 
@@ -622,6 +996,20 @@
                     dom.statusText.style.opacity = '1';
                 }, 500);
             }, 3000);
+        }
+        
+        function setSheetMode(mode) {
+            state.sheetMode = mode;
+            if (mode === 'simple') {
+                dom.simpleModeUi.style.display = 'flex'; 
+                dom.complexModeUi.style.display = 'none';
+                localStorage.setItem('sheetMode', 'simple');
+            } else {
+                dom.simpleModeUi.style.display = 'none';
+                dom.complexModeUi.style.display = 'flex';
+                localStorage.setItem('sheetMode', 'complex');
+            }
+            updateDOM();
         }
 
         // --- 功能按鈕 -----------------------------------------------------
@@ -639,12 +1027,8 @@
             if (state.recognizedData.length === 0) return;
             const headers = ["財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位", "備註"];
             const data = state.recognizedData.map(row => [
-                row.propertyId,
-                row.acquisitionDate,
-                row.serviceLife,
-                row.propertyName,
-                row.specification,
-                row.department,
+                row.propertyId, row.acquisitionDate, row.serviceLife,
+                row.propertyName, row.specification, row.department,
                 row.remark || ""
             ]);
             const exportData = [headers, ...data];
@@ -657,21 +1041,13 @@
 
         function copyTableData() {
             if (state.recognizedData.length === 0) return false;
-
             const headers = ["財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位", "備註"].join('\t');
-            
             const data = state.recognizedData.map(row => [
-                row.propertyId,
-                row.acquisitionDate,
-                row.serviceLife,
-                row.propertyName,
-                row.specification,
-                row.department,
+                row.propertyId, row.acquisitionDate, row.serviceLife,
+                row.propertyName, row.specification, row.department,
                 row.remark || ""
             ].join('\t')).join('\n');
-
             const tsvData = headers + '\n' + data;
-
             const textArea = document.createElement("textarea");
             textArea.value = tsvData;
             document.body.appendChild(textArea);
@@ -687,34 +1063,12 @@
             return success;
         }
 
-        /**
-         * (新) 複製資料並開啟 Google Sheet 連結
-         */
-        function handleCopyToGoogleSheet() {
-            const link = dom.googleSheetLink.value.trim();
-            if (!link.startsWith('http')) {
-                updateStatus('請輸入有效的 Google 試算表連結 (http... 開頭)', true);
-                return;
-            }
-
-            if (copyTableData()) {
-                // 複製成功
-                updateStatus('資料已複製！請在新分頁貼上 (Ctrl+V)。', false);
-                // 在新分頁開啟連結
-                window.open(link, '_blank');
-            } else {
-                // 複製失敗
-                updateStatus('複製失敗', true);
-            }
-        }
-
         function resetResults() {
             state.recognizedData = [];
             state.selectedRowIndex = -1;
             updateTable();
             updateStatus('已清空所有資料', false);
         }
-
 
         // --- 事件綁定 -----------------------------------------------------
 
@@ -729,7 +1083,11 @@
             // 右側
             dom.copyTableBtn.addEventListener('click', () => {
                 if(copyTableData()) {
-                    updateStatus('表格資料已複製！', false);
+                    if (state.sheetMode === 'simple') {
+                        updateStatus('表格資料已複製！請點一下試算表並按 Ctrl+V。', false);
+                    } else {
+                        updateStatus('表格資料已複製 (TSV)！', false);
+                    }
                 } else {
                     updateStatus('複製失敗', true);
                 }
@@ -738,16 +1096,47 @@
             dom.exportXlsxBtn.addEventListener('click', exportToXLSX);
             dom.resetBtn.addEventListener('click', resetResults);
 
-            // (新) Google Sheet
-            dom.googleSheetLink.addEventListener('input', updateDOM); // 讓按鈕能即時啟用
-            dom.copyToGSheetBtn.addEventListener('click', handleCopyToGoogleSheet);
+            // Google Sheet 模式切換
+            dom.modeSimpleRadio.addEventListener('change', () => setSheetMode('simple'));
+            dom.modeComplexRadio.addEventListener('change', () => setSheetMode('complex'));
+            
+            // 簡易模式
+            dom.copyAndOpenGSheetBtn.addEventListener('click', copyAndOpenGoogleSheet);
+
+            // API 模式
+            dom.initAuthBtn.addEventListener('click', initAuth);
+            dom.signOutBtn.addEventListener('click', handleSignoutClick);
+            dom.appendToSheetBtn.addEventListener('click', appendToGoogleSheet);
+
+            // Modal
+            dom.openGuideBtn.addEventListener('click', () => {
+                dom.guideModal.classList.remove('hidden');
+            });
+            const closeModal = () => {
+                dom.guideModal.classList.add('hidden');
+            };
+            dom.closeModalBtn.addEventListener('click', closeModal);
+            dom.closeModalX.addEventListener('click', closeModal);
+            dom.guideModalBackdrop.addEventListener('click', closeModal);
         }
 
         // --- 程式啟動 -----------------------------------------------------
         
         window.onload = () => {
             setupEventListeners();
-            loadCustomApiKey();
+            loadCustomApiKey(); // 載入 Gemini Key
+            loadGcpCredentials(); // 載入 GCP Keys
+            
+            // 載入儲存的模式
+            const savedMode = localStorage.getItem('sheetMode') || 'simple';
+            if (savedMode === 'complex') {
+                dom.modeComplexRadio.checked = true;
+                setSheetMode('complex');
+            } else {
+                dom.modeSimpleRadio.checked = true;
+                setSheetMode('simple');
+            }
+            
             updateDOM();
             updateTable();
         };
