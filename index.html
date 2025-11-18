@@ -80,7 +80,10 @@
 
             <!-- API 金鑰設定 (Gemini) -->
             <div class="mb-4">
-                <label for="api-key-input" class="block text-sm font-medium text-gray-700 mb-1">Gemini API 金鑰</label>
+                <div class="flex justify-between items-center mb-1">
+                    <label for="api-key-input" class="block text-sm font-medium text-gray-700">Gemini API 金鑰</label>
+                    <button id="open-gemini-guide-btn" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">如何取得？</button>
+                </div>
                 <div class="flex gap-2">
                     <input type="password" id="api-key-input" class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="請輸入完整的 Gemini API 金鑰">
                     <button id="save-api-key-btn" class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">儲存</button>
@@ -248,12 +251,12 @@
         <div class="fixed inset-0 z-10 overflow-y-auto">
             <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
                 <!-- Modal 內容 -->
-                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl">
                     <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
                             <div class="mt-3 text-left sm:mt-0 sm:w-full">
                                 <div class="flex justify-between items-center mb-4">
-                                    <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">Google Cloud API 設定教學</h3>
+                                    <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">API 金鑰設定教學</h3>
                                     <button id="close-modal-x" class="text-gray-400 hover:text-gray-500 focus:outline-none">
                                         <span class="sr-only">Close</span>
                                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -263,35 +266,52 @@
                                 </div>
                                 
                                 <div class="mt-2 max-h-[60vh] overflow-y-auto pr-2">
+                                    <!-- 第一部分：Gemini API -->
+                                    <h4 class="text-md font-bold text-gray-900 mb-2 border-b pb-1 flex items-center text-blue-600">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                        一、Gemini API (文字辨識用 - 必備)
+                                    </h4>
+                                    <ol class="list-decimal list-inside space-y-2 text-sm text-gray-600 mb-8">
+                                        <li class="guide-step">前往 <a href="https://ai.google.dev/makersuite" target="_blank" class="text-blue-600 underline hover:text-blue-800">Google AI Studio</a> 並登入。</li>
+                                        <li class="guide-step">點選左上角的 <strong>Get API key</strong> 按鈕。</li>
+                                        <li class="guide-step">點選 <strong>Create API key</strong> (Create key in new project)。</li>
+                                        <li class="guide-step">複製產生的 API Key，貼回本工具左側的「Gemini API 金鑰」欄位並儲存。</li>
+                                    </ol>
+
+                                    <!-- 第二部分：Google Sheets API -->
+                                    <h4 class="text-md font-bold text-gray-900 mb-2 border-b pb-1 flex items-center text-green-600">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                        二、Google Sheets API (自動寫入用 - 選用)
+                                    </h4>
+                                    <p class="text-xs text-gray-500 mb-3 bg-gray-50 p-2 rounded">僅在使用「API 模式」直接寫入 Google 試算表時需要此設定。若使用簡易模式可跳過。</p>
                                     <ol class="list-decimal list-inside space-y-4 text-sm text-gray-600">
                                         <li class="guide-step">
-                                            <h4>1. 建立專案</h4>
-                                            <p>前往 <a href="https://console.cloud.google.com/" target="_blank" class="text-blue-600 underline hover:text-blue-800">Google Cloud Console</a>，建立一個新專案。</p>
+                                            <span class="font-semibold text-gray-700">1. 建立專案：</span>
+                                            前往 <a href="https://console.cloud.google.com/" target="_blank" class="text-blue-600 underline hover:text-blue-800">Google Cloud Console</a>，建立一個新專案。
                                         </li>
                                         <li class="guide-step">
-                                            <h4>2. 啟用 Google Sheets API</h4>
-                                            <p>在左側選單點選「API 和服務」 > 「資料庫」，搜尋 <span class="guide-code">Google Sheets API</span> 並啟用它。</p>
+                                            <span class="font-semibold text-gray-700">2. 啟用 Google Sheets API：</span>
+                                            在左側選單點選「API 和服務」 > 「資料庫」，搜尋 <span class="guide-code">Google Sheets API</span> 並啟用它。
                                         </li>
                                         <li class="guide-step">
-                                            <h4>3. 設定 OAuth 同意畫面</h4>
-                                            <p>點選「API 和服務」 > 「OAuth 同意畫面」。
-                                            <ul class="list-disc list-inside ml-4 mt-1">
+                                            <span class="font-semibold text-gray-700">3. 設定 OAuth 同意畫面：</span>
+                                            <ul class="list-disc list-inside ml-4 mt-1 text-xs">
+                                                <li>點選「API 和服務」 > 「OAuth 同意畫面」。</li>
                                                 <li>User Type 選擇「外部 (External)」。</li>
                                                 <li>填寫應用程式名稱和聯絡信箱。</li>
                                                 <li>在「範圍 (Scopes)」步驟，搜尋並新增 <span class="guide-code">.../auth/spreadsheets</span>。</li>
                                                 <li>在「測試使用者」步驟，加入您自己的 Gmail 帳號。</li>
                                             </ul>
-                                            </p>
                                         </li>
                                         <li class="guide-step">
-                                            <h4>4. 建立憑證 (Credentials)</h4>
-                                            <p>點選「API 和服務」 > 「憑證」，點擊上方「建立憑證」。</p>
-                                            <ul class="list-disc list-inside ml-4 mt-1 space-y-2">
-                                                <li><strong>API 金鑰：</strong> 選擇「API 金鑰」，建立後複製下來。這是您的 <span class="font-semibold">Google Cloud API Key</span>。</li>
+                                            <span class="font-semibold text-gray-700">4. 建立憑證 (Credentials)：</span>
+                                            <p class="ml-4 mt-1">點選「API 和服務」 > 「憑證」，點擊上方「建立憑證」。</p>
+                                            <ul class="list-disc list-inside ml-4 mt-1 text-xs">
+                                                <li class="mb-1"><strong>API 金鑰：</strong> 建立後複製下來。這是您的 <span class="font-semibold text-red-500">Google Cloud API Key</span>。</li>
                                                 <li><strong>OAuth 用戶端 ID：</strong> 
-                                                    <br>選擇應用程式類型為「網頁應用程式 (Web Application)」。
+                                                    <br>選擇應用程式類型為「網頁應用程式」。
                                                     <br>在「已授權的 JavaScript 來源」中，如果您是在本機執行，請加入 <span class="guide-code">http://localhost</span> 和 <span class="guide-code">http://127.0.0.1</span>。如果是透過 file:// 開啟，可能需要架設簡易的本地伺服器。
-                                                    <br>建立後，複製您的「用戶端編號 (Client ID)」。這是您的 <span class="font-semibold">Google Cloud Client ID</span>。
+                                                    <br>建立後，複製您的「用戶端編號 (Client ID)」。這是您的 <span class="font-semibold text-red-500">Google Cloud Client ID</span>。
                                                 </li>
                                             </ul>
                                         </li>
@@ -354,6 +374,7 @@
             appendToSheetBtn: document.getElementById('append-to-sheet-btn'),
             
             // 教學 Modal
+            openGeminiGuideBtn: document.getElementById('open-gemini-guide-btn'), // (新)
             openGuideBtn: document.getElementById('open-guide-btn'),
             guideModal: document.getElementById('guide-modal'),
             closeModalBtn: document.getElementById('close-modal-btn'),
@@ -998,6 +1019,7 @@
             }, 3000);
         }
         
+        // 設定 Google Sheet 模式
         function setSheetMode(mode) {
             state.sheetMode = mode;
             if (mode === 'simple') {
@@ -1109,6 +1131,9 @@
             dom.appendToSheetBtn.addEventListener('click', appendToGoogleSheet);
 
             // Modal
+            dom.openGeminiGuideBtn.addEventListener('click', () => { // (新)
+                dom.guideModal.classList.remove('hidden');
+            });
             dom.openGuideBtn.addEventListener('click', () => {
                 dom.guideModal.classList.remove('hidden');
             });
