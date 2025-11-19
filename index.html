@@ -69,15 +69,18 @@
             background: rgba(30, 41, 59, 0.5);
             border: none;
             border-bottom: 2px solid #475569;
-            color: #f8fafc;
+            color: #facc15; /* 改為黃色 */
             padding: 10px 12px;
             transition: all 0.3s ease;
             border-radius: 4px 4px 0 0;
         }
+        .tech-input::placeholder {
+            color: rgba(250, 204, 21, 0.3); /* 半透明黃色提示字 */
+        }
         .tech-input:focus {
             outline: none;
             background: rgba(30, 41, 59, 0.8);
-            border-bottom-color: #facc15; /* 黃色 */
+            border-bottom-color: #facc15; 
             box-shadow: 0 10px 20px -10px rgba(250, 204, 21, 0.2);
         }
         .input-highlight {
@@ -98,7 +101,7 @@
         .tech-table thead th {
             background: rgba(30, 41, 59, 0.9);
             color: #facc15;
-            font-family: 'Noto Sans TC', sans-serif;
+            font-family: 'Noto Sans TC', sans-serif; 
             font-weight: 700;
             letter-spacing: 0.05em;
             border-bottom: 1px solid #facc15;
@@ -113,7 +116,7 @@
         
         textarea.editable-cell {
             background: transparent;
-            color: #cbd5e1;
+            color: #facc15; /* 改為黃色 */
             border: 1px solid transparent;
             border-radius: 4px;
             transition: all 0.2s;
@@ -123,7 +126,7 @@
             background: rgba(15, 23, 42, 0.8);
             border-color: #facc15;
             box-shadow: 0 0 8px rgba(250, 204, 21, 0.3);
-            color: #ffffff;
+            color: #fde047; /* 聚焦時更亮的黃色 */
             outline: none;
         }
 
@@ -220,12 +223,6 @@
     <!-- 背景裝飾網格 -->
     <div class="fixed inset-0 z-[-1]" style="background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 40px 40px;"></div>
 
-    <!-- 
-      主要容器 Layout 修正:
-      1. h-auto: 預設自動高度，適應平板/手機內容
-      2. lg:h-[85vh]: 電腦版固定高度
-      3. overflow-hidden -> lg:overflow-hidden: 手機版允許捲動，電腦版隱藏外框
-    -->
     <div class="container mx-auto max-w-7xl w-full glass-panel rounded-2xl flex flex-col lg:flex-row shadow-2xl border-t border-white/10 relative h-auto lg:h-[85vh] lg:overflow-hidden">
 
         <!-- 語言切換 -->
@@ -235,7 +232,6 @@
         </div>
 
         <!-- 左側：控制台 -->
-        <!-- lg:overflow-y-auto: 電腦版左側可獨立捲動 -->
         <div class="w-full lg:w-1/3 p-6 border-b lg:border-b-0 lg:border-r border-slate-700 flex flex-col relative lg:overflow-y-auto">
             <!-- 裝飾光暈 -->
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-50"></div>
@@ -320,11 +316,9 @@
         </div>
 
         <!-- 右側：結果儀表板 -->
-        <!-- lg:overflow-y-auto: 電腦版右側可獨立捲動 -->
         <div class="w-full lg:w-2/3 p-6 lg:p-8 flex flex-col bg-slate-800/30 lg:overflow-y-auto">
             
             <!-- 上半部：辨識結果 -->
-            <!-- 平板/手機：h-auto 或固定 min-height; 電腦: flex-col -->
             <div class="flex flex-col mb-6">
                 <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
                     <h2 class="text-xl font-bold text-white flex items-center tech-font tracking-wide">
@@ -352,7 +346,6 @@
                 </div>
 
                 <!-- 結果表格 (響應式高度) -->
-                <!-- h-[400px] 在平板上固定高度，lg:flex-1 在電腦上自動填滿 -->
                 <div class="h-[400px] lg:h-[45vh] overflow-hidden bg-slate-900/60 rounded-lg border border-slate-700 relative">
                     <div class="absolute inset-0 overflow-auto custom-scrollbar">
                         <table class="min-w-full divide-y divide-slate-700 tech-table">
@@ -399,10 +392,10 @@
                     </div>
                 </div>
 
-                <div class="bg-slate-800/40 p-6 rounded-xl border border-slate-700 flex-col">
+                <div class="bg-slate-800/40 p-6 rounded-xl border border-slate-700 flex-1 flex flex-col">
                     
                     <!-- 簡易模式 UI -->
-                    <div id="simple-mode-ui" class="flex flex-col justify-center">
+                    <div id="simple-mode-ui" class="flex flex-col flex-1 justify-center">
                         <div class="w-full max-w-2xl mx-auto space-y-5">
                             <div class="input-group">
                                 <label for="google-sheet-link-simple" class="text-xs text-slate-400 mb-1 block" data-i18n="targetUrl">試算表網址</label>
@@ -625,8 +618,6 @@
         let currentLang = 'zh';
 
         // --- 狀態與 DOM -----------------------------------------------------
-        // (JavaScript 邏輯保持不變，完全參照上一個版本)
-        // 為節省篇幅，邏輯部分與前次相同，僅翻譯字串整合進去
 
         const dom = {
             apiKeyInput: document.getElementById('api-key-input'),
@@ -1257,7 +1248,7 @@
                     html += `
                         <td class="px-4 py-3 text-sm align-top"> 
                             <textarea 
-                                   class="editable-cell w-full bg-transparent border-b border-transparent focus:border-yellow-400 focus:ring-0 px-1 py-0.5 text-sm resize-none overflow-hidden block font-medium text-slate-300 focus:text-white" 
+                                   class="editable-cell w-full bg-transparent border-b border-transparent focus:border-yellow-400 focus:ring-0 px-1 py-0.5 text-sm resize-none overflow-hidden block font-medium text-yellow-400 focus:text-yellow-300" 
                                    data-index="${index}" data-field="${field}"
                                    rows="1">${row[field] || ''}</textarea>
                         </td>
@@ -1267,7 +1258,7 @@
                 html += `
                     <td class="px-4 py-3 text-sm align-top">
                         <textarea 
-                               class="editable-cell w-full bg-transparent border-b border-transparent focus:border-yellow-400 focus:ring-0 px-1 py-0.5 text-sm resize-none overflow-hidden block font-medium text-slate-400 focus:text-white" 
+                               class="editable-cell w-full bg-transparent border-b border-transparent focus:border-yellow-400 focus:ring-0 px-1 py-0.5 text-sm resize-none overflow-hidden block font-medium text-yellow-400 focus:text-yellow-300" 
                                data-index="${index}" data-field="remark"
                                rows="1">${row.remark || ''}</textarea>
                     </td>
