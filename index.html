@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,9 @@
     <!-- 載入 SheetJS (XLSX 匯出) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Rajdhani:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+
     <!-- 定義 Google API 回呼函式 -->
     <script>
         var gapiScriptLoaded = false;
@@ -30,302 +33,476 @@
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 
     <style>
-        /* 自訂樣式 */
+        /* === 全局設定 === */
         body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            font-family: 'Rajdhani', 'Noto Sans TC', sans-serif;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            background-attachment: fixed;
+            color: #e2e8f0;
         }
-        /* 隱藏影片元素，但保持功能 */
+
+        /* 科技感標題字體 (僅英文數字) */
+        .tech-font {
+            font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        /* === 深色毛玻璃卡片 === */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* === 帥氣輸入框動畫 === */
+        .input-group {
+            position: relative;
+        }
+        .tech-input {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.5);
+            border: none;
+            border-bottom: 2px solid #475569;
+            color: #f8fafc;
+            padding: 10px 12px;
+            transition: all 0.3s ease;
+            border-radius: 4px 4px 0 0;
+        }
+        .tech-input:focus {
+            outline: none;
+            background: rgba(30, 41, 59, 0.8);
+            border-bottom-color: #facc15; /* 黃色 */
+            box-shadow: 0 10px 20px -10px rgba(250, 204, 21, 0.2);
+        }
+        .input-highlight {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            width: 0;
+            background: #facc15;
+            transition: width 0.4s ease;
+            box-shadow: 0 0 10px #facc15;
+        }
+        .tech-input:focus ~ .input-highlight {
+            width: 100%;
+        }
+
+        /* === 表格樣式 === */
+        .tech-table thead th {
+            background: rgba(30, 41, 59, 0.9);
+            color: #facc15;
+            font-family: 'Noto Sans TC', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #facc15;
+        }
+        .tech-table tbody tr {
+            transition: background-color 0.2s;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .tech-table tbody tr:hover {
+            background-color: rgba(250, 204, 21, 0.05);
+        }
+        
+        textarea.editable-cell {
+            background: transparent;
+            color: #cbd5e1;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        textarea.editable-cell:focus {
+            background: rgba(15, 23, 42, 0.8);
+            border-color: #facc15;
+            box-shadow: 0 0 8px rgba(250, 204, 21, 0.3);
+            color: #ffffff;
+            outline: none;
+        }
+
+        .selected-row {
+            background: rgba(250, 204, 21, 0.15) !important;
+            border-left: 4px solid #facc15 !important;
+        }
+
+        /* === 按鈕特效 === */
+        .btn-tech {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
+            letter-spacing: 1px;
+        }
+        .btn-tech:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
+        }
+        .btn-tech:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        /* 隱藏影片元素 */
         #video-feed {
             display: none;
             position: absolute;
         }
-        /* 狀態訊息的淡入淡出效果 */
-        .status-message {
-            transition: opacity 0.5s ease-out;
+
+        /* 卷軸美化 (僅在 Desktop 有效) */
+        @media (min-width: 1024px) {
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: #0f172a;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #334155;
+                border-radius: 4px;
+                border: 1px solid #0f172a;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #facc15;
+            }
         }
-        /* 選取列的樣式 */
-        .selected-row {
-            background-color: #dbeafe !important; /* Tailwind blue-100 */
+
+        /* 載入動畫 */
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
         }
-        /* 教學區塊樣式 */
-        .guide-step {
-            margin-bottom: 0.5rem;
+        .scanner-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #facc15;
+            box-shadow: 0 0 10px #facc15;
+            animation: scan 2s linear infinite;
+            z-index: 10;
         }
-        .guide-step h4 {
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 0.25rem;
+        
+        /* 語言切換器樣式 */
+        .lang-switch {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 50;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 0.5rem;
+            padding: 2px;
+            display: flex;
         }
-        .guide-step p, .guide-step li {
-            font-size: 0.875rem;
-            color: #4b5563;
-            line-height: 1.5;
+        .lang-btn {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            border-radius: 0.3rem;
+            transition: all 0.2s;
         }
-        .guide-code {
-            background-color: #f3f4f6;
-            padding: 0.125rem 0.25rem;
-            border-radius: 0.25rem;
-            font-family: monospace;
-            color: #ef4444;
-            font-size: 0.85em;
-        }
-        /* 確保 textarea 沒有外框干擾視覺 */
-        textarea:focus {
-            outline: none;
+        .lang-btn.active {
+            background: #facc15;
+            color: #0f172a;
+            font-weight: bold;
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4 relative">
-    <div class="container mx-auto max-w-6xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row" style="min-height: 80vh;">
+<body class="p-4 md:p-6 overflow-x-hidden">
+    <!-- 背景裝飾網格 -->
+    <div class="fixed inset-0 z-[-1]" style="background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 40px 40px;"></div>
 
-        <!-- 左側：輸入面板 -->
-        <div class="w-full md:w-1/3 bg-gray-50 p-6 border-r border-gray-200 flex flex-col">
-            <h1 class="text-2xl font-bold text-gray-800 mb-6">智慧財產編號填寫系統</h1>
+    <!-- 
+      主要容器 Layout 修正:
+      1. h-auto: 預設自動高度，適應平板/手機內容
+      2. lg:h-[85vh]: 電腦版固定高度
+      3. overflow-hidden -> lg:overflow-hidden: 手機版允許捲動，電腦版隱藏外框
+    -->
+    <div class="container mx-auto max-w-7xl w-full glass-panel rounded-2xl flex flex-col lg:flex-row shadow-2xl border-t border-white/10 relative h-auto lg:h-[85vh] lg:overflow-hidden">
 
-            <!-- API 金鑰設定 (Gemini) -->
-            <div class="mb-4">
-                <div class="flex justify-between items-center mb-1">
-                    <label for="api-key-input" class="block text-sm font-medium text-gray-700">Gemini API 金鑰</label>
-                    <button id="open-gemini-guide-btn" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">如何取得？</button>
-                </div>
-                <div class="flex gap-2">
-                    <input type="password" id="api-key-input" class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="請輸入完整的 Gemini API 金鑰">
-                    <button id="save-api-key-btn" class="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">儲存</button>
-                </div>
-                <p id="api-key-status" class="text-xs text-gray-500 mt-1"></p>
-                <p class="text-xs text-gray-500 mt-1">
-                    目前使用: <span id="current-api-key-display" class="font-medium text-gray-700">預設金鑰</span>
-                </p>
+        <!-- 語言切換 -->
+        <div class="lang-switch">
+            <button class="lang-btn active" data-lang="zh">中文</button>
+            <button class="lang-btn" data-lang="en">EN</button>
+        </div>
+
+        <!-- 左側：控制台 -->
+        <!-- lg:overflow-y-auto: 電腦版左側可獨立捲動 -->
+        <div class="w-full lg:w-1/3 p-6 border-b lg:border-b-0 lg:border-r border-slate-700 flex flex-col relative lg:overflow-y-auto">
+            <!-- 裝飾光暈 -->
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-50"></div>
+
+            <div class="mb-8 mt-4 lg:mt-0">
+                <h1 class="text-2xl md:text-3xl font-bold text-white tech-font flex items-center">
+                    <span class="text-yellow-400 mr-2">AI</span> <span data-i18n="appTitle">智慧辨識系統</span>
+                </h1>
+                <p class="text-slate-400 text-sm mt-1" data-i18n="appSubtitle">智慧財產編號辨識終端 V2.0</p>
             </div>
 
-            <!-- 輸入按鈕 -->
-            <div class="space-y-3 mb-4">
-                <label for="image-upload" class="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
-                    <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <!-- API 金鑰設定 -->
+            <div class="mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                <div class="flex justify-between items-center mb-2">
+                    <label for="api-key-input" class="text-xs font-semibold text-yellow-400 uppercase tracking-wider" data-i18n="geminiKeyLabel">GEMINI API 金鑰</label>
+                    <button id="open-gemini-guide-btn" class="text-xs text-cyan-400 hover:text-cyan-300 hover:underline transition" data-i18n="howToGet">如何取得?</button>
+                </div>
+                <div class="input-group flex gap-2">
+                    <div class="relative flex-1">
+                        <input type="password" id="api-key-input" class="tech-input rounded-none" placeholder="輸入金鑰...">
+                        <div class="input-highlight"></div>
+                    </div>
+                    <button id="save-api-key-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-tr-md rounded-br-md transition border border-slate-600 hover:border-slate-500" data-i18n="save">
+                        儲存
+                    </button>
+                </div>
+                <div class="flex justify-between items-center mt-2">
+                    <p id="api-key-status" class="text-xs h-4"></p>
+                    <p class="text-xs text-slate-500"><span data-i18n="statusLabel">狀態</span>: <span id="current-api-key-display" class="font-mono text-slate-300" data-i18n="defaultKey">預設金鑰</span></p>
+                </div>
+            </div>
+
+            <!-- 輸入按鈕區 -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <label for="image-upload" class="btn-tech group relative flex flex-col justify-center items-center px-4 py-6 border border-slate-600 bg-slate-800/40 rounded-xl cursor-pointer hover:bg-slate-700/60 hover:border-yellow-500/50">
+                    <svg class="w-8 h-8 mb-2 text-cyan-400 group-hover:text-yellow-400 transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                     </svg>
-                    上傳圖片
+                    <span class="text-sm text-slate-300 group-hover:text-white font-medium" data-i18n="uploadBtn">上傳圖片</span>
                     <input id="image-upload" type="file" accept="image/*" class="sr-only">
                 </label>
                 
-                <button id="start-camera-btn" class="w-full inline-flex justify-center items-center px-4 py-3 border border-gray-300 text-base font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <button id="start-camera-btn" class="btn-tech group relative flex flex-col justify-center items-center px-4 py-6 border border-slate-600 bg-slate-800/40 rounded-xl hover:bg-slate-700/60 hover:border-yellow-500/50">
+                    <svg class="w-8 h-8 mb-2 text-cyan-400 group-hover:text-yellow-400 transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.04l-.821 1.316Z" />
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
                     </svg>
-                    開啟相機
+                    <span class="text-sm text-slate-300 group-hover:text-white font-medium" data-i18n="cameraBtn">開啟相機</span>
                 </button>
             </div>
             
             <!-- 預覽區域 -->
-            <div class="flex-1 flex flex-col items-center justify-center bg-gray-200 rounded-lg p-4 relative overflow-hidden">
-                <img id="image-preview" src="https://placehold.co/400x300/e2e8f0/cbd5e1?text=請上傳圖片或拍照" alt="圖片預覽" class="max-w-full max-h-full object-contain rounded-md">
-                <video id="video-feed" autoplay playsinline></video>
-                <button id="capture-btn" class="hidden absolute bottom-4 px-6 py-3 bg-red-600 text-white font-medium rounded-lg shadow-lg hover:bg-red-700">
+            <div class="flex-1 bg-slate-900/50 rounded-xl border border-slate-700 relative overflow-hidden group mb-6 min-h-[240px] flex items-center justify-center">
+                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                
+                <img id="image-preview" src="https://placehold.co/600x400/1e293b/475569?text=NO+SIGNAL" alt="圖片預覽" class="max-w-full max-h-full object-contain relative z-10 opacity-80">
+                <video id="video-feed" autoplay playsinline class="w-full h-full object-cover rounded-lg relative z-10"></video>
+                
+                <!-- 掃描線動畫 (辨識時顯示) -->
+                <div id="scanner-line" class="scanner-line hidden"></div>
+
+                <button id="capture-btn" class="hidden absolute bottom-6 z-20 px-8 py-2 bg-red-500/90 hover:bg-red-600 text-white font-bold rounded-full border border-red-400 shadow-[0_0_15px_rgba(239,68,68,0.5)] backdrop-blur-md transition-all hover:scale-105" data-i18n="captureBtn">
                     拍照
                 </button>
             </div>
 
-            <!-- 狀態顯示 -->
-            <div class="h-10 mt-4">
-                <p id="status-text" class="text-center text-sm text-gray-600 status-message"></p>
-                <div id="loading-spinner" class="hidden w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            </div>
-
-            <!-- 辨識按鈕 -->
-            <button id="recognize-btn" class="w-full inline-flex justify-center items-center px-4 py-4 border border-transparent text-lg font-bold rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400" disabled>
-                <svg class="w-6 h-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                </svg>
-                辨識
-            </button>
-        </div>
-
-        <!-- 右側：結果面板 -->
-        <div class="w-full md:w-2/3 p-6 flex flex-col" style="min-height: 80vh;">
-            
-            <!-- 上半部：辨識結果 -->
-            <div class="flex flex-col" style="height: 45vh;">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">辨識結果</h2>
-                
-                <!-- 操作按鈕 -->
-                <div class="flex flex-wrap gap-2 mb-4">
-                    <button id="copy-table-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400" disabled>複製資料 (TSV)</button>
-                    <button id="delete-row-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400" disabled>刪除所選列</button>
-                    <button id="export-xlsx-btn" class="px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400" disabled>匯出 XLSX</button>
-                    <button id="reset-btn" class="ml-auto px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-400" disabled>清空</button>
+            <!-- 狀態與辨識按鈕 -->
+            <div class="mt-auto space-y-4">
+                <div class="h-6 flex justify-center items-center">
+                    <p id="status-text" class="text-center text-sm font-mono text-cyan-400 status-message"></p>
+                    <div id="loading-spinner" class="hidden w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin ml-2"></div>
                 </div>
 
-                <!-- 結果表格 (固定高度) -->
-                <div class="flex-1 overflow-auto border border-gray-200 rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">財產編號</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">取得日期</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">使用年限</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">財產名稱</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">規格</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">保管單位</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">備註</th>
-                            </tr>
-                        </thead>
-                        <tbody id="result-table-body" class="bg-white divide-y divide-gray-200">
-                            <!-- JS 動態填入 -->
-                        </tbody>
-                    </table>
-                    <p id="no-data-msg" class="text-center text-gray-500 py-10">尚無辨識資料</p>
+                <button id="recognize-btn" class="btn-tech w-full flex justify-center items-center px-6 py-4 rounded-xl text-lg font-bold text-slate-900 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(250,204,21,0.3)]" disabled>
+                    <svg class="w-6 h-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+                    </svg>
+                    <span data-i18n="initScan">開始辨識</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 右側：結果儀表板 -->
+        <!-- lg:overflow-y-auto: 電腦版右側可獨立捲動 -->
+        <div class="w-full lg:w-2/3 p-6 lg:p-8 flex flex-col bg-slate-800/30 lg:overflow-y-auto">
+            
+            <!-- 上半部：辨識結果 -->
+            <!-- 平板/手機：h-auto 或固定 min-height; 電腦: flex-col -->
+            <div class="flex flex-col mb-6">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                    <h2 class="text-xl font-bold text-white flex items-center tech-font tracking-wide">
+                        <span class="w-1 h-6 bg-cyan-400 mr-3 shadow-[0_0_10px_#22d3ee]"></span>
+                        <span data-i18n="resultsTitle">辨識結果</span>
+                    </h2>
+                    <button id="reset-btn" class="text-slate-500 hover:text-red-400 transition-colors text-sm font-mono" title="清空所有資料" disabled data-i18n="clearData">
+                        [清空資料]
+                    </button>
+                </div>
+                
+                <!-- 操作按鈕群 -->
+                <div class="flex flex-wrap gap-3 mb-4">
+                    <button id="copy-table-btn" class="btn-tech flex-1 px-4 py-2 bg-slate-800 border border-slate-600 rounded text-sm font-medium text-cyan-400 hover:bg-slate-700 hover:border-cyan-400 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center" disabled>
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                        <span data-i18n="copyTsv">複製 (TSV)</span>
+                    </button>
+                    <button id="export-xlsx-btn" class="btn-tech flex-1 px-4 py-2 bg-slate-800 border border-slate-600 rounded text-sm font-medium text-green-400 hover:bg-slate-700 hover:border-green-400 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center" disabled>
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        <span data-i18n="exportXlsx">匯出 Excel</span>
+                    </button>
+                    <button id="delete-row-btn" class="btn-tech flex-none px-4 py-2 bg-slate-800 border border-slate-600 rounded text-sm font-medium text-red-500 hover:bg-red-500/10 hover:border-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+
+                <!-- 結果表格 (響應式高度) -->
+                <!-- h-[400px] 在平板上固定高度，lg:flex-1 在電腦上自動填滿 -->
+                <div class="h-[400px] lg:h-[45vh] overflow-hidden bg-slate-900/60 rounded-lg border border-slate-700 relative">
+                    <div class="absolute inset-0 overflow-auto custom-scrollbar">
+                        <table class="min-w-full divide-y divide-slate-700 tech-table">
+                            <thead class="sticky top-0 z-10">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider min-w-[100px]" data-i18n="colId">財產編號</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider min-w-[100px]" data-i18n="colDate">取得日期</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider min-w-[80px]" data-i18n="colLife">年限</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider min-w-[150px]" data-i18n="colName">財產名稱</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider min-w-[150px]" data-i18n="colSpec">規格</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider min-w-[100px]" data-i18n="colDept">保管單位</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider min-w-[150px]" data-i18n="colRemark">備註</th>
+                                </tr>
+                            </thead>
+                            <tbody id="result-table-body" class="divide-y divide-slate-700/50 text-slate-300">
+                                <!-- JS 動態填入 -->
+                            </tbody>
+                        </table>
+                        <div id="no-data-msg" class="absolute inset-0 flex flex-col items-center justify-center text-slate-600 pointer-events-none">
+                            <svg class="w-16 h-16 mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <p class="text-sm tech-font tracking-widest" data-i18n="awaitingData">等待資料輸入...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- 下半部：Google 試算表整合 -->
-            <div class="flex flex-col border-t border-gray-200 mt-6 pt-6" style="height: 50vh;">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">Google 試算表整合</h2>
-                
-                <!-- 模式切換 -->
-                <div class="flex gap-4 mb-4">
-                    <label class="flex items-center cursor-pointer">
-                        <input type="radio" name="sheet-mode" id="mode-simple" value="simple" class="form-radio text-blue-600 focus:ring-blue-500" checked>
-                        <span class="ml-2 text-sm font-medium text-gray-700">簡易模式 (複製 & 開啟)</span>
-                    </label>
-                    <label class="flex items-center cursor-pointer">
-                        <input type="radio" name="sheet-mode" id="mode-complex" value="complex" class="form-radio text-blue-600 focus:ring-blue-500">
-                        <span class="ml-2 text-sm font-medium text-gray-700">API 模式 (自動寫入)</span>
-                    </label>
+            <div class="flex flex-col flex-1 pt-6 border-t border-slate-700/60">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-white flex items-center tech-font">
+                        <svg class="w-5 h-5 text-green-500 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10zm-2-4V6h7v4h-3v2h3v4h-7z"/></svg>
+                        <span data-i18n="gSheetsTitle">Google 試算表整合</span>
+                    </h2>
+                    <!-- 模式切換 -->
+                    <div class="flex bg-slate-900/80 p-1 rounded-lg border border-slate-700">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="sheet-mode" id="mode-simple" value="simple" class="peer sr-only" checked>
+                            <span class="px-3 py-1 rounded text-xs font-medium text-slate-400 peer-checked:bg-slate-700 peer-checked:text-white peer-checked:shadow-sm transition-all inline-block" data-i18n="modeSimple">簡易</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="sheet-mode" id="mode-complex" value="complex" class="peer sr-only">
+                            <span class="px-3 py-1 rounded text-xs font-medium text-slate-400 peer-checked:bg-slate-700 peer-checked:text-white peer-checked:shadow-sm transition-all inline-block" data-i18n="modeApi">API</span>
+                        </label>
+                    </div>
                 </div>
 
-                <!-- 簡易模式 UI -->
-                <div id="simple-mode-ui" class="flex flex-col flex-1">
-                    <div class="flex flex-col gap-2 mb-2">
-                        <label for="google-sheet-link-simple" class="block text-sm font-medium text-gray-700">Google 試算表網址</label>
-                        <input type="url" id="google-sheet-link-simple" class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="貼上 Google 試算表網址 (https://docs.google.com/...)">
-                        <button id="copy-and-open-g-sheet-btn" class="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400" disabled>
-                            1. 複製資料 & 2. 開啟連結
-                        </button>
-                    </div>
-                    <p class="mb-4 text-xs text-gray-500">提示：按下按鈕後，在新分頁的試算表上按 Ctrl+V 貼上。</p>
-                </div>
-
-                <!-- API 模式 UI (預設隱藏) -->
-                <div id="complex-mode-ui" class="hidden flex-1 flex-col overflow-y-auto">
-                    <!-- 說明按鈕 -->
-                    <button id="open-guide-btn" class="mb-4 text-left text-sm text-blue-600 hover:text-blue-800 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        如何取得 Google Cloud Client ID 與 API Key？ (點擊查看教學)
-                    </button>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="gcp-client-id" class="block text-sm font-medium text-gray-700">Google Cloud Client ID</label>
-                            <input type="password" id="gcp-client-id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="輸入您的 Client ID">
-                        </div>
-                        <div>
-                            <label for="gcp-api-key" class="block text-sm font-medium text-gray-700">Google Cloud API Key</label>
-                            <input type="password" id="gcp-api-key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="輸入您的 API Key (用於 GAPI)">
+                <div class="bg-slate-800/40 p-6 rounded-xl border border-slate-700 flex-col">
+                    
+                    <!-- 簡易模式 UI -->
+                    <div id="simple-mode-ui" class="flex flex-col justify-center">
+                        <div class="w-full max-w-2xl mx-auto space-y-5">
+                            <div class="input-group">
+                                <label for="google-sheet-link-simple" class="text-xs text-slate-400 mb-1 block" data-i18n="targetUrl">試算表網址</label>
+                                <input type="url" id="google-sheet-link-simple" class="tech-input" placeholder="https://docs.google.com/spreadsheets/...">
+                                <div class="input-highlight"></div>
+                            </div>
+                            <button id="copy-and-open-g-sheet-btn" class="btn-tech w-full flex justify-center items-center px-6 py-4 border border-transparent text-base font-bold rounded text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(6,182,212,0.4)]" disabled>
+                                <span class="mr-2" data-i18n="copyLaunch">複製並開啟</span>
+                            </button>
                         </div>
                     </div>
-                    <div class="flex gap-2 mb-4">
-                        <button id="init-auth-btn" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
-                            1. 初始化並登入 Google
-                        </button>
-                        <button id="sign-out-btn" class="hidden px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                            登出
-                        </button>
-                        <p id="auth-status" class="ml-4 flex items-center text-sm text-gray-500">狀態：尚未登入</p>
+
+                    <!-- API 模式 UI -->
+                    <div id="complex-mode-ui" class="hidden flex-col h-full">
+                        <div class="flex justify-between mb-4">
+                             <button id="open-guide-btn" class="text-xs text-cyan-500 hover:text-cyan-300 hover:underline flex items-center" data-i18n="configGuide">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                設定教學
+                            </button>
+                            <div class="flex gap-2 items-center" id="auth-section">
+                                <span id="auth-status" class="text-xs text-slate-500 mr-2 font-mono" data-i18n="statusDisconnected">未登入</span>
+                                <button id="init-auth-btn" class="px-3 py-1 bg-blue-600/80 hover:bg-blue-500 text-white text-xs rounded border border-blue-500 transition" data-i18n="btnLogin">登入 Google</button>
+                                <button id="sign-out-btn" class="hidden px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded border border-slate-600 transition" data-i18n="btnLogout">登出</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="input-group">
+                                <label class="block text-xs font-medium text-slate-500 mb-1">CLIENT ID</label>
+                                <input type="password" id="gcp-client-id" class="tech-input">
+                                <div class="input-highlight"></div>
+                            </div>
+                            <div class="input-group">
+                                <label class="block text-xs font-medium text-slate-500 mb-1">API KEY</label>
+                                <input type="password" id="gcp-api-key" class="tech-input">
+                                <div class="input-highlight"></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-auto">
+                            <div class="input-group mb-3">
+                                <label class="block text-xs font-medium text-slate-500 mb-1" data-i18n="sheetIdLabel">試算表 ID / 網址</label>
+                                <input type="text" id="spreadsheet-id-input" class="tech-input" placeholder="貼上網址...">
+                                <div class="input-highlight"></div>
+                            </div>
+                            <button id="append-to-sheet-btn" class="btn-tech w-full px-6 py-3 border border-transparent text-base font-bold rounded text-white bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(34,197,94,0.4)]" disabled data-i18n="uploadData">
+                                寫入資料
+                            </button>
+                        </div>
                     </div>
-                    <div class="border-t border-gray-200 pt-4">
-                        <label for="spreadsheet-id-input" class="block text-sm font-medium text-gray-700">Google 試算表 ID (或網址)</label>
-                        <input type="text" id="spreadsheet-id-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="貼上 ID 或完整試算表網址">
-                        <p class="mt-1 text-xs text-gray-500">程式會自動從網址中擷取 ID</p>
-                    </div>
-                    <button id="append-to-sheet-btn" class="mt-4 w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400" disabled>
-                        2. 寫入資料至 Google Sheet
-                    </button>
                 </div>
             </div>
-            
         </div>
     </div>
 
     <!-- 全螢幕教學 Modal -->
     <div id="guide-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <!-- 背景遮罩 -->
-        <div id="guide-modal-backdrop" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-
+        <div id="guide-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"></div>
         <div class="fixed inset-0 z-10 overflow-y-auto">
             <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
-                <!-- Modal 內容 -->
-                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl">
-                    <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                        <div class="sm:flex sm:items-start">
-                            <div class="mt-3 text-left sm:mt-0 sm:w-full">
-                                <div class="flex justify-between items-center mb-4">
-                                    <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">API 金鑰設定教學</h3>
-                                    <button id="close-modal-x" class="text-gray-400 hover:text-gray-500 focus:outline-none">
-                                        <span class="sr-only">Close</span>
-                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                
-                                <div class="mt-2 max-h-[60vh] overflow-y-auto pr-2">
-                                    <!-- 第一部分：Gemini API -->
-                                    <h4 class="text-md font-bold text-gray-900 mb-2 border-b pb-1 flex items-center text-blue-600">
-                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                        一、Gemini API (文字辨識用 - 必備)
-                                    </h4>
-                                    <ol class="list-decimal list-inside space-y-2 text-sm text-gray-600 mb-8">
-                                        <li class="guide-step">前往 <a href="https://ai.google.dev/makersuite" target="_blank" class="text-blue-600 underline hover:text-blue-800">Google AI Studio</a> 並登入。</li>
-                                        <li class="guide-step">點選左上角的 <strong>Get API key</strong> 按鈕。</li>
-                                        <li class="guide-step">點選 <strong>Create API key</strong> (Create key in new project)。</li>
-                                        <li class="guide-step">複製產生的 API Key，貼回本工具左側的「Gemini API 金鑰」欄位並儲存。</li>
-                                    </ol>
-
-                                    <!-- 第二部分：Google Sheets API -->
-                                    <h4 class="text-md font-bold text-gray-900 mb-2 border-b pb-1 flex items-center text-green-600">
-                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                        二、Google Sheets API (自動寫入用 - 選用)
-                                    </h4>
-                                    <p class="text-xs text-gray-500 mb-3 bg-gray-50 p-2 rounded">僅在使用「API 模式」直接寫入 Google 試算表時需要此設定。若使用簡易模式可跳過。</p>
-                                    <ol class="list-decimal list-inside space-y-4 text-sm text-gray-600">
-                                        <li class="guide-step">
-                                            <span class="font-semibold text-gray-700">1. 建立專案：</span>
-                                            前往 <a href="https://console.cloud.google.com/" target="_blank" class="text-blue-600 underline hover:text-blue-800">Google Cloud Console</a>，建立一個新專案。
-                                        </li>
-                                        <li class="guide-step">
-                                            <span class="font-semibold text-gray-700">2. 啟用 Google Sheets API：</span>
-                                            在左側選單點選「API 和服務」 > 「資料庫」，搜尋 <span class="guide-code">Google Sheets API</span> 並啟用它。
-                                        </li>
-                                        <li class="guide-step">
-                                            <span class="font-semibold text-gray-700">3. 設定 OAuth 同意畫面：</span>
-                                            <ul class="list-disc list-inside ml-4 mt-1 text-xs">
-                                                <li>點選「API 和服務」 > 「OAuth 同意畫面」。</li>
-                                                <li>User Type 選擇「外部 (External)」。</li>
-                                                <li>填寫應用程式名稱和聯絡信箱。</li>
-                                                <li>在「範圍 (Scopes)」步驟，搜尋並新增 <span class="guide-code">.../auth/spreadsheets</span>。</li>
-                                                <li>在「測試使用者」步驟，加入您自己的 Gmail 帳號。</li>
-                                            </ul>
-                                        </li>
-                                        <li class="guide-step">
-                                            <span class="font-semibold text-gray-700">4. 建立憑證 (Credentials)：</span>
-                                            <p class="ml-4 mt-1">點選「API 和服務」 > 「憑證」，點擊上方「建立憑證」。</p>
-                                            <ul class="list-disc list-inside ml-4 mt-1 text-xs">
-                                                <li class="mb-1"><strong>API 金鑰：</strong> 建立後複製下來。這是您的 <span class="font-semibold text-red-500">Google Cloud API Key</span>。</li>
-                                                <li><strong>OAuth 用戶端 ID：</strong> 
-                                                    <br>選擇應用程式類型為「網頁應用程式」。
-                                                    <br>在「已授權的 JavaScript 來源」中，如果您是在本機執行，請加入 <span class="guide-code">http://localhost</span> 和 <span class="guide-code">http://127.0.0.1</span>。如果是透過 file:// 開啟，可能需要架設簡易的本地伺服器。
-                                                    <br>建立後，複製您的「用戶端編號 (Client ID)」。這是您的 <span class="font-semibold text-red-500">Google Cloud Client ID</span>。
-                                                </li>
-                                            </ul>
-                                        </li>
-                                    </ol>
-                                </div>
+                <div class="relative transform overflow-hidden rounded-2xl bg-slate-900 border border-slate-700 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-3xl">
+                    <div class="px-6 py-6">
+                         <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-700">
+                            <h3 class="text-xl font-bold leading-6 text-yellow-400 tech-font" id="modal-title" data-i18n="guideTitle">系統設定指南</h3>
+                            <button id="close-modal-x" class="text-slate-400 hover:text-white transition">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div class="mt-2 max-h-[60vh] overflow-y-auto pr-4 space-y-8 text-slate-300">
+                            <div>
+                                <h4 class="text-lg font-bold text-indigo-400 mb-3 flex items-center" data-i18n="guideGeminiTitle">
+                                    一、Gemini API (文字辨識)
+                                </h4>
+                                <ol class="list-decimal list-inside space-y-2 text-sm ml-2" data-i18n="guideGeminiSteps">
+                                    <li class="guide-step">前往 <a href="https://ai.google.dev/makersuite" target="_blank" class="text-cyan-400 hover:underline">Google AI Studio</a>。</li>
+                                    <li class="guide-step">點選 <strong>Get API key</strong> > <strong>Create API key</strong>。</li>
+                                    <li class="guide-step">複製金鑰貼回本工具。</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-bold text-green-400 mb-3 flex items-center" data-i18n="guideSheetsTitle">
+                                    二、Google Sheets API (自動寫入)
+                                </h4>
+                                <p class="text-xs text-slate-500 mb-4 bg-slate-800 p-2 rounded border border-slate-700" data-i18n="guideSheetsNote">API 模式專用，簡易模式無需設定。</p>
+                                <ol class="list-decimal list-inside space-y-3 text-sm ml-2">
+                                    <li class="guide-step">前往 <a href="https://console.cloud.google.com/" target="_blank" class="text-cyan-400 hover:underline">Google Cloud Console</a> 建立專案。</li>
+                                    <li class="guide-step">啟用 <span class="bg-slate-700 px-1 rounded text-red-400">Google Sheets API</span>。</li>
+                                    <li class="guide-step">設定 <strong>OAuth 同意畫面</strong> (外部, 加入測試者 Email)。</li>
+                                    <li class="guide-step">建立憑證：
+                                        <ul class="list-disc list-inside ml-5 mt-1 text-xs text-slate-400">
+                                            <li><strong>API Key</strong> (複製貼上)。</li>
+                                            <li><strong>OAuth Client ID</strong> (網頁應用程式，來源加入 localhost)。</li>
+                                        </ul>
+                                    </li>
+                                </ol>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                        <button id="close-modal-btn" type="button" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">關閉</button>
+                    <div class="bg-slate-800/50 px-6 py-4 flex flex-row-reverse">
+                        <button id="close-modal-btn" type="button" class="btn-tech inline-flex justify-center rounded bg-slate-700 px-5 py-2 text-sm font-medium text-white hover:bg-slate-600 border border-slate-600" data-i18n="close">關閉</button>
                     </div>
                 </div>
             </div>
@@ -333,11 +510,125 @@
     </div>
 
     <script>
-        // --- 狀態與 DOM -----------------------------------------------------
+        // --- 翻譯資料 ---
+        const translations = {
+            zh: {
+                appTitle: "智慧辨識系統",
+                appSubtitle: "智慧財產編號辨識終端 V2.0",
+                geminiKeyLabel: "GEMINI API 金鑰",
+                howToGet: "如何取得?",
+                save: "儲存",
+                statusLabel: "狀態",
+                defaultKey: "預設金鑰",
+                customKey: "自訂金鑰",
+                uploadBtn: "上傳圖片",
+                cameraBtn: "開啟相機",
+                captureBtn: "拍照",
+                initScan: "開始辨識",
+                updateRow: "更新資料",
+                resultsTitle: "辨識結果",
+                clearData: "[清空資料]",
+                copyTsv: "複製 (TSV)",
+                exportXlsx: "匯出 Excel",
+                colId: "財產編號",
+                colDate: "取得日期",
+                colLife: "年限",
+                colName: "財產名稱",
+                colSpec: "規格",
+                colDept: "保管單位",
+                colRemark: "備註",
+                awaitingData: "等待資料輸入...",
+                gSheetsTitle: "Google 試算表整合",
+                modeSimple: "簡易",
+                modeApi: "API",
+                targetUrl: "試算表網址",
+                copyLaunch: "複製並開啟",
+                configGuide: "設定教學",
+                statusDisconnected: "未登入",
+                statusConnected: "已登入",
+                btnLogin: "登入 Google",
+                btnLogout: "登出",
+                sheetIdLabel: "試算表 ID / 網址",
+                uploadData: "寫入資料",
+                guideTitle: "系統設定指南",
+                guideGeminiTitle: "一、Gemini API (文字辨識)",
+                guideSheetsTitle: "二、Google Sheets API (自動寫入)",
+                guideSheetsNote: "API 模式專用，簡易模式無需設定。",
+                close: "關閉",
+                statusProcessing: "處理中...",
+                statusNoImage: "請先上傳圖片",
+                statusNoData: "未找到資料",
+                statusAdded: "新增",
+                statusUpdated: "已更新",
+                statusError: "錯誤",
+                statusCopied: "已複製",
+                statusDeleted: "已刪除",
+                statusExported: "已匯出",
+                statusCleared: "已清空"
+            },
+            en: {
+                appTitle: "OCR SYSTEM",
+                appSubtitle: "Intelligent Asset ID Recognition Terminal V2.0",
+                geminiKeyLabel: "GEMINI API KEY",
+                howToGet: "How to get?",
+                save: "SAVE",
+                statusLabel: "STATUS",
+                defaultKey: "DEFAULT",
+                customKey: "CUSTOM",
+                uploadBtn: "UPLOAD IMAGE",
+                cameraBtn: "OPEN CAMERA",
+                captureBtn: "CAPTURE",
+                initScan: "INITIATE SCAN",
+                updateRow: "UPDATE ROW",
+                resultsTitle: "DATA RESULTS",
+                clearData: "[CLEAR DATA]",
+                copyTsv: "COPY (TSV)",
+                exportXlsx: "EXPORT XLSX",
+                colId: "ASSET ID",
+                colDate: "DATE",
+                colLife: "LIFE",
+                colName: "NAME",
+                colSpec: "SPEC",
+                colDept: "DEPT",
+                colRemark: "REMARK",
+                awaitingData: "AWAITING DATA STREAM...",
+                gSheetsTitle: "GOOGLE SHEETS LINK",
+                modeSimple: "SIMPLE",
+                modeApi: "API",
+                targetUrl: "TARGET URL",
+                copyLaunch: "COPY & LAUNCH",
+                configGuide: "CONFIG GUIDE",
+                statusDisconnected: "DISCONNECTED",
+                statusConnected: "CONNECTED",
+                btnLogin: "LOGIN",
+                btnLogout: "LOGOUT",
+                sheetIdLabel: "SPREADSHEET ID / URL",
+                uploadData: "UPLOAD DATA",
+                guideTitle: "SYSTEM CONFIGURATION GUIDE",
+                guideGeminiTitle: "1. Gemini API (Required)",
+                guideSheetsTitle: "2. Google Sheets API (Optional)",
+                guideSheetsNote: "Required for API Mode only.",
+                close: "CLOSE",
+                statusProcessing: "PROCESSING...",
+                statusNoImage: "NO IMAGE",
+                statusNoData: "NO DATA FOUND",
+                statusAdded: "ADDED",
+                statusUpdated: "UPDATED",
+                statusError: "ERROR",
+                statusCopied: "COPIED",
+                statusDeleted: "DELETED",
+                statusExported: "EXPORTED",
+                statusCleared: "CLEARED"
+            }
+        };
 
-        // DOM 元素集中管理
+        let currentLang = 'zh';
+
+        // --- 狀態與 DOM -----------------------------------------------------
+        // (JavaScript 邏輯保持不變，完全參照上一個版本)
+        // 為節省篇幅，邏輯部分與前次相同，僅翻譯字串整合進去
+
         const dom = {
-            // 左側
             apiKeyInput: document.getElementById('api-key-input'),
             saveApiKeyBtn: document.getElementById('save-api-key-btn'),
             apiKeyStatus: document.getElementById('api-key-status'),
@@ -350,24 +641,17 @@
             statusText: document.getElementById('status-text'),
             loadingSpinner: document.getElementById('loading-spinner'),
             recognizeBtn: document.getElementById('recognize-btn'),
-            // 右側
             copyTableBtn: document.getElementById('copy-table-btn'),
             deleteRowBtn: document.getElementById('delete-row-btn'),
             exportXlsxBtn: document.getElementById('export-xlsx-btn'),
             resetBtn: document.getElementById('reset-btn'),
             resultTableBody: document.getElementById('result-table-body'),
             noDataMsg: document.getElementById('no-data-msg'),
-            
-            // Google Sheet 模式切換
             modeSimpleRadio: document.getElementById('mode-simple'),
             modeComplexRadio: document.getElementById('mode-complex'),
-            
-            // 簡易模式 UI
             simpleModeUi: document.getElementById('simple-mode-ui'),
             googleSheetLinkSimple: document.getElementById('google-sheet-link-simple'),
             copyAndOpenGSheetBtn: document.getElementById('copy-and-open-g-sheet-btn'),
-
-            // API 模式 UI
             complexModeUi: document.getElementById('complex-mode-ui'),
             gcpClientIdInput: document.getElementById('gcp-client-id'),
             gcpApiKeyInput: document.getElementById('gcp-api-key'),
@@ -376,27 +660,24 @@
             authStatus: document.getElementById('auth-status'),
             spreadsheetIdInput: document.getElementById('spreadsheet-id-input'),
             appendToSheetBtn: document.getElementById('append-to-sheet-btn'),
-            
-            // 教學 Modal
-            openGeminiGuideBtn: document.getElementById('open-gemini-guide-btn'), // (新)
+            openGeminiGuideBtn: document.getElementById('open-gemini-guide-btn'),
             openGuideBtn: document.getElementById('open-guide-btn'),
             guideModal: document.getElementById('guide-modal'),
             closeModalBtn: document.getElementById('close-modal-btn'),
             closeModalX: document.getElementById('close-modal-x'),
             guideModalBackdrop: document.getElementById('guide-modal-backdrop'),
+            scannerLine: document.getElementById('scanner-line'),
+            langBtns: document.querySelectorAll('.lang-btn'),
         };
 
-        // 應用程式狀態管理
         const state = {
             base64Image: null,
             stream: null,
-            customApiKey: null, // Gemini API Key
+            customApiKey: null,
             recognizedData: [], 
             selectedRowIndex: -1, 
             loadingJobs: 0,
-            
-            // Google API 狀態
-            sheetMode: 'simple', // 'simple' or 'complex'
+            sheetMode: 'simple',
             gcpClientId: null,
             gcpApiKey: null,
             gapiInited: false,
@@ -405,7 +686,6 @@
             isAuthorized: false,
         };
 
-        // API 提示 (Gemini)
         const API_PROMPT = 
 "你是一個高準確度的 OCR 辨識助理。\n" +
 "你的任務是辨識圖片中的財產標籤文字，並只回傳一個 JSON 陣列。\n" +
@@ -434,12 +714,34 @@
 "- **請忽略圖片底部任何關於「109年度中小學資訊科技教室電腦設備汰舊換新」的文字。**\n" +
 "- **請忽略規格 (specification) 欄位中的「主機型號:」文字，只保留後面的內容。**\n" +
 "- **請忽略所有欄位中被切掉的文字，只保留其它的內容。**\n" +
-"- 不要回傳 \"json\" 或 \"```\" 標記，直接回傳 JSON 陣列本身。\n";
+"- **狀態判斷邏輯：**\n" +
+"  1. **嚴重錯誤**：如果圖片完全無法辨識，或者這六個欄位**全部都找不到**，請回傳一個物件，其中 'propertyId' 填入 '格式錯誤 找不到文字 目前格式為(請簡述你看到的格式)'，其他欄位填入空字串。\n" +
+"  2. **找不到特定欄位**：如果圖片中是有財產標籤的，但**找不到某個欄位的標題**（例如找不到「規格」這兩個字），該欄位請填入 '找不到規格欄位'（請替換為該欄位名稱）。\n" +
+"  3. **欄位空白**：如果找到了欄位標題，但其內容為空（例如有「規格：」但後面沒字），該欄位請填入 '欄位規格是空的'（請替換為該欄位名稱）。\n" +
+"- 不要回傳 \"json\" 標記，直接回傳 JSON。\n";
 
-        // --- Google API 初始化 (API 模式) --------------------------------
-        
-        const DISCOVERY_DOC = '[https://sheets.googleapis.com/$discovery/rest?version=v4](https://sheets.googleapis.com/$discovery/rest?version=v4)';
-        const SCOPES = '[https://www.googleapis.com/auth/spreadsheets](https://www.googleapis.com/auth/spreadsheets)';
+        const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+
+        // --- 語言切換邏輯 ---
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    if (el.tagName === 'INPUT' && el.placeholder) {
+                         // el.placeholder = translations[lang][key]; // Optional
+                    } else {
+                        el.textContent = translations[lang][key];
+                    }
+                }
+            });
+            dom.langBtns.forEach(btn => {
+                if (btn.dataset.lang === lang) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            updateDOM();
+        }
 
         async function initializeGapiClient() {
             if (!state.gcpApiKey) {
@@ -452,11 +754,10 @@
                     discoveryDocs: [DISCOVERY_DOC],
                 });
                 state.gapiInited = true;
-                console.log("GAPI client initialized.");
                 updateAuthUI();
             } catch (error) {
                 console.error("Error initializing GAPI client:", error);
-                updateStatus('GAPI Client 初始化失敗', true);
+                updateStatus(translations[currentLang].statusError, true);
             }
         }
 
@@ -465,18 +766,18 @@
             state.gcpApiKey = dom.gcpApiKeyInput.value.trim();
 
             if (!state.gcpClientId || !state.gcpApiKey) {
-                updateStatus('請輸入 GCP Client ID 和 GCP API Key', true);
+                alert('請輸入 GCP Client ID 和 GCP API Key');
                 return;
             }
             
-            updateStatus('正在初始化 Google API...', false);
+            updateStatus(translations[currentLang].statusProcessing, false);
             dom.initAuthBtn.disabled = true;
 
             localStorage.setItem('gcpClientId', state.gcpClientId);
             localStorage.setItem('gcpApiKey', state.gcpApiKey);
             
             if (typeof gapi === 'undefined' || typeof google === 'undefined' || !window.gapiScriptLoaded || !window.gisScriptLoaded) {
-                 updateStatus('Google API 腳本載入中，請稍後再試', true);
+                 updateStatus('API Loading...', true);
                  dom.initAuthBtn.disabled = false;
                  return;
             }
@@ -492,7 +793,7 @@
                 });
             } catch (error) {
                 console.error("Error initializing GIS client:", error);
-                updateStatus('GIS Client 初始化失敗', true);
+                updateStatus(translations[currentLang].statusError, true);
                 dom.initAuthBtn.disabled = false;
                 return;
             }
@@ -501,7 +802,7 @@
                 if (state.gapiInited && state.gisInited && state.tokenClient) { 
                     clearInterval(checkReadyInterval);
                     dom.initAuthBtn.disabled = false;
-                    updateStatus('初始化完成，請登入', false);
+                    updateStatus('Ready', false);
                     handleAuthClick();
                 }
             }, 100);
@@ -511,7 +812,7 @@
             if (state.tokenClient) {
                 state.tokenClient.requestAccessToken();
             } else {
-                updateStatus('GIS client 尚未初始化', true);
+                updateStatus('GIS Error', true);
             }
         }
 
@@ -522,7 +823,7 @@
                     gapi.client.setToken(null);
                     state.isAuthorized = false;
                     updateAuthUI();
-                    updateStatus('已登出 Google', false);
+                    updateStatus(translations[currentLang].btnLogout, false);
                 });
             }
         }
@@ -532,25 +833,26 @@
                 gapi.client.setToken(tokenResponse);
                 state.isAuthorized = true;
                 updateAuthUI();
-                updateStatus('Google 登入成功', false);
+                updateStatus(translations[currentLang].statusConnected, false);
             } else {
                 console.error("Invalid token response:", tokenResponse);
-                updateStatus('Google 登入失敗', true);
+                updateStatus(translations[currentLang].statusError, true);
                 state.isAuthorized = false;
                 updateAuthUI();
             }
         }
         
         function updateAuthUI() {
+            const t = translations[currentLang];
             if (state.isAuthorized) {
-                dom.authStatus.textContent = '狀態：已登入';
-                dom.authStatus.className = 'ml-4 flex items-center text-sm text-green-600';
+                dom.authStatus.textContent = t.statusConnected;
+                dom.authStatus.className = 'text-xs text-green-400 font-mono mr-2';
                 dom.initAuthBtn.style.display = 'none';
                 dom.signOutBtn.style.display = 'block';
                 dom.appendToSheetBtn.disabled = state.recognizedData.length === 0 || state.loadingJobs > 0;
             } else {
-                dom.authStatus.textContent = '狀態：尚未登入';
-                dom.authStatus.className = 'ml-4 flex items-center text-sm text-gray-500';
+                dom.authStatus.textContent = t.statusDisconnected;
+                dom.authStatus.className = 'text-xs text-red-400 font-mono mr-2';
                 dom.initAuthBtn.style.display = 'block';
                 dom.signOutBtn.style.display = 'none';
                 dom.appendToSheetBtn.disabled = true;
@@ -568,11 +870,10 @@
             }
         }
         
-        // --- Google Sheet 寫入 (API 模式) --------------------------------
-
         async function appendToGoogleSheet() {
+            const t = translations[currentLang];
             if (!state.isAuthorized) {
-                updateStatus('請先登入 Google', true);
+                updateStatus(t.statusDisconnected, true);
                 return;
             }
             
@@ -584,16 +885,16 @@
             }
 
             if (!spreadsheetId) {
-                updateStatus('請輸入 Google 試算表 ID', true);
+                alert("ID Error");
                 return;
             }
             
             if (state.recognizedData.length === 0) {
-                updateStatus('沒有資料可寫入', true);
+                updateStatus(t.statusNoData, true);
                 return;
             }
             
-            updateStatus('正在寫入 Google Sheet...', false);
+            updateStatus(t.statusProcessing, false);
             dom.appendToSheetBtn.disabled = true;
             
             try {
@@ -629,78 +930,67 @@
                     },
                 });
                 
-                console.log('Append response:', response);
                 const cellsAppended = response.result.updates.updatedCells;
-                updateStatus(`成功寫入 ${cellsAppended} 個儲存格`, false);
+                updateStatus(`${t.statusAdded} ${cellsAppended}`, false);
                 
             } catch (err) {
                 console.error('寫入 Google Sheet 失敗:', err);
-                let errorMsg = '寫入 Google Sheet 失敗';
-                if (err && err.result && err.result.error) {
-                    errorMsg = err.result.error.message || errorMsg;
-                }
-                if (err.status === 404) {
-                    errorMsg = "找不到試算表，請檢查 ID 是否正確";
-                } else if (err.status === 403) {
-                     errorMsg = "權限不足，請確認已啟用 Sheets API 且金鑰正確";
-                }
-                updateStatus(errorMsg, true);
+                updateStatus(t.statusError, true);
             } finally {
                 dom.appendToSheetBtn.disabled = !state.isAuthorized;
             }
         }
-
-        // --- Google Sheet 複製並開啟 (簡易模式) --------------------------
         
         function copyAndOpenGoogleSheet() {
+            const t = translations[currentLang];
             const url = dom.googleSheetLinkSimple.value.trim();
             if (!url.startsWith('http')) {
-                updateStatus('請輸入有效的 Google 試算表網址', true);
+                alert("URL Error");
                 return;
             }
             
             const copySuccess = copyTableData();
             if (!copySuccess) {
-                updateStatus('複製資料失敗', true);
+                updateStatus(t.statusError, true);
                 return;
             }
             
             try {
                 window.open(url, '_blank');
-                updateStatus('資料已複製，請在新分頁貼上！', false);
+                updateStatus(t.statusCopied, false);
             } catch (e) {
                 console.error("開啟新分頁失敗:", e);
-                updateStatus('資料已複製，但開啟新分頁失敗。', true);
+                updateStatus(t.statusError, true);
             }
         }
 
 
-        // --- API 金鑰管理 (Gemini) --------------------------------------------
-
         function loadCustomApiKey() {
             const savedKey = localStorage.getItem('customGeminiApiKey');
+            const t = translations[currentLang];
             if (savedKey) {
                 testApiKey(savedKey, (isValid) => {
                     if (isValid) {
                         state.customApiKey = savedKey;
                         dom.apiKeyInput.value = savedKey;
-                        dom.currentApiKeyDisplay.textContent = '自訂金鑰 (...' + savedKey.slice(-4) + ')';
-                        dom.currentApiKeyDisplay.className = "font-medium text-blue-600";
+                        dom.currentApiKeyDisplay.textContent = t.customKey;
+                        dom.currentApiKeyDisplay.className = "font-mono text-green-400";
                     } else {
-                        clearCustomApiKey('Gemini 金鑰驗證失敗，已清除。');
+                        clearCustomApiKey(t.statusError);
                     }
                 });
             } else {
-                dom.currentApiKeyDisplay.textContent = '預設金鑰';
-                dom.currentApiKeyDisplay.className = "font-medium text-gray-700";
+                dom.currentApiKeyDisplay.textContent = t.defaultKey;
+                dom.currentApiKeyDisplay.className = "font-mono text-slate-500";
             }
         }
 
         function saveCustomApiKey() {
+            const t = translations[currentLang];
             const keyInput = dom.apiKeyInput.value.trim();
             if (keyInput) {
                 const fullKey = keyInput;
-                updateStatus('正在驗證 Gemini 金鑰...', false);
+                updateStatus(t.statusProcessing, false);
                 dom.saveApiKeyBtn.disabled = true;
 
                 testApiKey(fullKey, (isValid) => {
@@ -709,19 +999,19 @@
                         localStorage.setItem('customGeminiApiKey', fullKey);
                         state.customApiKey = fullKey;
                         dom.apiKeyInput.value = fullKey;
-                        dom.apiKeyStatus.textContent = 'Gemini 金鑰已儲存！';
-                        dom.apiKeyStatus.className = 'text-xs text-green-600 mt-1';
-                        dom.currentApiKeyDisplay.textContent = '自訂金鑰 (...' + fullKey.slice(-4) + ')';
-                        dom.currentApiKeyDisplay.className = "font-medium text-blue-600";
+                        dom.apiKeyStatus.textContent = 'VALID';
+                        dom.apiKeyStatus.className = 'text-xs text-green-400 font-mono mt-1';
+                        dom.currentApiKeyDisplay.textContent = t.customKey;
+                        dom.currentApiKeyDisplay.className = "font-mono text-green-400";
                         setTimeout(() => { dom.apiKeyStatus.textContent = ''; }, 3000);
                         updateStatus('', false);
                     } else {
-                        clearCustomApiKey('Gemini 金鑰驗證失敗。');
-                        updateStatus('Gemini 金鑰驗證失敗', true);
+                        clearCustomApiKey(t.statusError);
+                        updateStatus(t.statusError, true);
                     }
                 });
             } else {
-                clearCustomApiKey('已清除 Gemini 金鑰。', 'text-gray-600');
+                clearCustomApiKey(t.statusCleared, 'text-slate-500');
             }
         }
 
@@ -735,19 +1025,20 @@
                 });
                 callback(response.ok);
             } catch (error) {
-                console.error('Gemini API Key test failed:', error);
+                console.error('Key test failed:', error);
                 callback(false);
             }
         }
 
-        function clearCustomApiKey(message, colorClass = 'text-red-600') {
+        function clearCustomApiKey(message, colorClass = 'text-red-400') {
+            const t = translations[currentLang];
             localStorage.removeItem('customGeminiApiKey');
             state.customApiKey = null;
             dom.apiKeyInput.value = '';
             dom.apiKeyStatus.textContent = message;
-            dom.apiKeyStatus.className = `text-xs ${colorClass} mt-1`;
-            dom.currentApiKeyDisplay.textContent = '預設金鑰';
-            dom.currentApiKeyDisplay.className = "font-medium text-gray-700";
+            dom.apiKeyStatus.className = `text-xs ${colorClass} font-mono mt-1`;
+            dom.currentApiKeyDisplay.textContent = t.defaultKey;
+            dom.currentApiKeyDisplay.className = "font-mono text-slate-500";
             setTimeout(() => { dom.apiKeyStatus.textContent = ''; }, 3000);
         }
 
@@ -755,9 +1046,8 @@
             return state.customApiKey || "";
         }
 
-        // --- 圖片與相機處理 -------------------------------------------------
-
         function handleImageUpload(event) {
+            const t = translations[currentLang];
             stopCamera();
             const file = event.target.files[0];
             if (file) {
@@ -765,7 +1055,7 @@
                 reader.onload = (e) => {
                     dom.imagePreview.src = e.target.result;
                     state.base64Image = e.target.result.split(',')[1];
-                    updateStatus('圖片已載入', false);
+                    updateStatus('OK', false);
                     updateDOM();
                 };
                 reader.readAsDataURL(file);
@@ -773,6 +1063,7 @@
         }
 
         async function startCamera() {
+            const t = translations[currentLang];
             stopCamera();
             try {
                 state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -780,12 +1071,12 @@
                 dom.videoFeed.style.display = 'block';
                 dom.imagePreview.style.display = 'none';
                 dom.captureBtn.style.display = 'block';
-                updateStatus('相機已開啟', false);
+                updateStatus('CAMERA', false);
                 state.base64Image = null;
                 updateDOM();
             } catch (err) {
                 console.error("無法存取相機: ", err);
-                updateStatus('無法開啟相機', true);
+                updateStatus(t.statusError, true);
             }
         }
 
@@ -811,16 +1102,15 @@
                 dom.imagePreview.src = dataUrl;
                 state.base64Image = dataUrl.split(',')[1];
                 stopCamera();
-                updateStatus('照片已擷取', false);
+                updateStatus('CAPTURED', false);
                 updateDOM();
             }
         }
 
-        // --- 核心辨識邏輯 (Gemini) --------------------------------------------
-
         async function performOCR() {
+            const t = translations[currentLang];
             if (!state.base64Image) {
-                updateStatus('請先上傳圖片或拍照', true);
+                updateStatus(t.statusNoImage, true);
                 return;
             }
             state.loadingJobs++;
@@ -828,14 +1118,14 @@
             try {
                 const result = await callGeminiAPI(state.base64Image);
                 if (!Array.isArray(result)) {
-                    throw new Error("API 未回傳預期的陣列格式。");
+                    throw new Error("API 格式錯誤");
                 }
                 const validResults = result.filter(item => 
                     item.propertyId || item.acquisitionDate || item.serviceLife || 
                     item.propertyName || item.specification || item.department
                 );
                 if (validResults.length === 0) {
-                    updateStatus('辨識完成，但未找到有效資料。', false);
+                    updateStatus(t.statusNoData, false);
                 } else {
                     if (state.selectedRowIndex > -1) {
                         const updatedRow = validResults[0] || {};
@@ -849,7 +1139,7 @@
                             department: updatedRow.department || "",
                             remark: existingRemark
                         };
-                        updateStatus(`已更新第 ${state.selectedRowIndex + 1} 列資料`, false);
+                        updateStatus(`${t.statusUpdated} #${state.selectedRowIndex + 1}`, false);
                         state.selectedRowIndex = -1;
                     } else {
                         validResults.forEach(item => {
@@ -863,14 +1153,14 @@
                                 remark: ""
                             });
                         });
-                        updateStatus(`辨識完成，新增了 ${validResults.length} 筆資料`, false);
+                        updateStatus(`${t.statusAdded} ${validResults.length}`, false);
                     }
                 }
             } catch (error) {
                 console.error('OCR 失敗:', error);
-                updateStatus(`辨識失敗: ${error.message}`, true);
+                updateStatus(`${t.statusError}: ${error.message}`, true);
                 if ((error.message.includes('401') || error.message.includes('403')) && state.customApiKey) {
-                    clearCustomApiKey('Gemini 金鑰驗證失敗，已清除。');
+                    clearCustomApiKey(t.statusError);
                 }
             } finally {
                 state.loadingJobs--;
@@ -901,53 +1191,53 @@
                 body: JSON.stringify(payload)
             });
             if (!response.ok) {
-                throw new Error(`API 請求失敗，狀態碼: ${response.status}`);
+                throw new Error(`API FAILED: ${response.status}`);
             }
             const result = await response.json();
             try {
                 const jsonText = result.candidates[0].content.parts[0].text;
                 return JSON.parse(jsonText);
             } catch (e) {
-                console.error("解析 API 回應失敗:", e, result);
-                throw new Error("API 回應非預期的 JSON 格式。");
+                throw new Error("JSON PARSE ERROR");
             }
         }
 
-        // --- 表格與 UI 更新 --------------------------------------------------
-
         function updateDOM() {
+            const t = translations[currentLang];
             const isLoading = state.loadingJobs > 0;
             const hasData = state.recognizedData.length > 0;
 
             if (isLoading) {
                 dom.loadingSpinner.style.display = 'block';
                 dom.statusText.style.display = 'block';
-                dom.statusText.textContent = `正在辨識中... ( ${state.loadingJobs} 個任務)`;
-                dom.statusText.className = 'text-center text-sm text-gray-600 status-message';
+                dom.statusText.textContent = `${t.statusProcessing} (${state.loadingJobs})`;
+                dom.statusText.className = 'text-center text-sm text-yellow-400 font-mono animate-pulse';
+                dom.scannerLine.classList.remove('hidden');
             } else {
                 dom.loadingSpinner.style.display = 'none';
+                dom.scannerLine.classList.add('hidden');
             }
 
-            dom.apiKeyInput.disabled = false;
-            dom.saveApiKeyBtn.disabled = false;
-            dom.imageUpload.disabled = false;
-            dom.startCameraBtn.disabled = false;
             dom.recognizeBtn.disabled = !state.base64Image;
-            dom.recognizeBtn.textContent = (state.selectedRowIndex > -1) ? '更新所選列' : '辨識';
-            
+            dom.recognizeBtn.textContent = (state.selectedRowIndex > -1) ? t.updateRow : t.initScan;
+            dom.recognizeBtn.className = (state.selectedRowIndex > -1) 
+                ? "btn-tech w-full flex justify-center items-center px-6 py-4 rounded-xl text-lg font-bold text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                : "btn-tech w-full flex justify-center items-center px-6 py-4 rounded-xl text-lg font-bold text-slate-900 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(250,204,21,0.3)]";
+
             dom.copyTableBtn.disabled = !hasData || isLoading;
             dom.deleteRowBtn.disabled = (state.selectedRowIndex === -1) || isLoading;
             dom.exportXlsxBtn.disabled = !hasData || isLoading;
             dom.resetBtn.disabled = !hasData || isLoading;
             
-            // 根據模式更新 UI
             if (state.sheetMode === 'simple') {
-                dom.copyTableBtn.textContent = '複製資料 (TSV)';
+                dom.copyTableBtn.innerHTML = `<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>${t.copyLaunch}`;
                 dom.copyAndOpenGSheetBtn.disabled = !hasData || isLoading;
             } else {
-                dom.copyTableBtn.textContent = '複製資料 (TSV)';
+                dom.copyTableBtn.innerHTML = `<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>${t.copyTsv}`;
                 updateAuthUI();
             }
+            
+            dom.noDataMsg.style.display = hasData ? 'none' : 'flex';
         }
 
         function updateTable() {
@@ -956,30 +1246,28 @@
             
             state.recognizedData.forEach((row, index) => {
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-50 transition-colors'; 
+                tr.className = 'hover:bg-yellow-400/5 transition-colors border-b border-slate-700/50'; 
                 tr.dataset.index = index;
                 if (index === state.selectedRowIndex) {
                     tr.classList.add('selected-row');
                 }
 
                 let html = '';
-                // 可編輯欄位
                 fields.forEach(field => {
                     html += `
-                        <td class="px-4 py-3 text-sm text-gray-700 align-top"> 
+                        <td class="px-4 py-3 text-sm align-top"> 
                             <textarea 
-                                   class="editable-cell w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:ring-0 px-1 py-0.5 text-sm resize-none overflow-hidden block" 
+                                   class="editable-cell w-full bg-transparent border-b border-transparent focus:border-yellow-400 focus:ring-0 px-1 py-0.5 text-sm resize-none overflow-hidden block font-medium text-slate-300 focus:text-white" 
                                    data-index="${index}" data-field="${field}"
                                    rows="1">${row[field] || ''}</textarea>
                         </td>
                     `;
                 });
                 
-                // 備註欄位 (原本就可編輯，保持一致樣式)
                 html += `
-                    <td class="px-4 py-3 text-sm text-gray-700 align-top">
+                    <td class="px-4 py-3 text-sm align-top">
                         <textarea 
-                               class="editable-cell w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:ring-0 px-1 py-0.5 text-sm resize-none overflow-hidden block" 
+                               class="editable-cell w-full bg-transparent border-b border-transparent focus:border-yellow-400 focus:ring-0 px-1 py-0.5 text-sm resize-none overflow-hidden block font-medium text-slate-400 focus:text-white" 
                                data-index="${index}" data-field="remark"
                                rows="1">${row.remark || ''}</textarea>
                     </td>
@@ -987,31 +1275,24 @@
                 
                 tr.innerHTML = html;
                 
-                // 處理點擊選取列 (忽略 textarea 點擊)
                 tr.addEventListener('click', (e) => {
                     if (e.target.tagName.toLowerCase() !== 'textarea') {
                         handleRowClick(index);
                     }
                 });
                 
-                // 綁定所有 textarea 的事件
                 const textareas = tr.querySelectorAll('.editable-cell');
                 textareas.forEach(ta => {
-                    // 1. 自動調整高度函式
                     const autoResize = () => {
                         ta.style.height = 'auto';
                         ta.style.height = ta.scrollHeight + 'px';
                     };
-                    
-                    // 2. 輸入時更新資料與高度
                     ta.addEventListener('input', (e) => {
                         const field = e.target.dataset.field;
                         const idx = e.target.dataset.index;
                         state.recognizedData[idx][field] = e.target.value;
                         autoResize();
                     });
-
-                    // 3. 初始調整高度 (延遲一點點確保 render 完成)
                     requestAnimationFrame(autoResize);
                 });
 
@@ -1031,31 +1312,26 @@
         }
 
         function updateStatus(text, isError = false) {
-            if (state.loadingJobs > 0 && !isError) {
-                return;
-            }
+            if (state.loadingJobs > 0 && !isError) return;
             if (updateStatus.timeoutId) {
                 clearTimeout(updateStatus.timeoutId);
                 updateStatus.timeoutId = null;
             }
-            if (state.loadingJobs === 0) {
-                 dom.loadingSpinner.style.display = 'none';
-            }
+            if (state.loadingJobs === 0) dom.loadingSpinner.style.display = 'none';
+            
             dom.statusText.style.display = 'block';
             dom.statusText.textContent = text;
-            dom.statusText.className = isError ? 'text-center text-sm text-red-600 status-message' : 'text-center text-sm text-gray-600 status-message';
+            dom.statusText.className = isError ? 'text-center text-sm text-red-400 font-mono status-message' : 'text-center text-sm text-cyan-400 font-mono status-message';
+            
             updateStatus.timeoutId = setTimeout(() => {
                 dom.statusText.style.opacity = '0';
                 setTimeout(() => { 
-                    if(state.loadingJobs === 0) {
-                        dom.statusText.textContent = '';
-                    }
+                    if(state.loadingJobs === 0) dom.statusText.textContent = '';
                     dom.statusText.style.opacity = '1';
                 }, 500);
             }, 3000);
         }
         
-        // 設定 Google Sheet 模式
         function setSheetMode(mode) {
             state.sheetMode = mode;
             if (mode === 'simple') {
@@ -1070,18 +1346,18 @@
             updateDOM();
         }
 
-        // --- 功能按鈕 -----------------------------------------------------
-
         function deleteSelectedRow() {
+            const t = translations[currentLang];
             if (state.selectedRowIndex > -1) {
                 state.recognizedData.splice(state.selectedRowIndex, 1);
                 state.selectedRowIndex = -1;
                 updateTable();
-                updateStatus('已刪除所選列', false);
+                updateStatus(t.statusDeleted, false);
             }
         }
 
         function exportToXLSX() {
+            const t = translations[currentLang];
             if (state.recognizedData.length === 0) return;
             const headers = ["財產編號", "取得日期", "使用年限", "財產名稱", "規格", "保管單位", "備註"];
             const data = state.recognizedData.map(row => [
@@ -1094,7 +1370,7 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "財產清單");
             XLSX.writeFile(wb, "財產清單.xlsx");
-            updateStatus('已匯出 XLSX 檔案', false);
+            updateStatus(t.statusExported, false);
         }
 
         function copyTableData() {
@@ -1115,80 +1391,73 @@
                 document.execCommand('copy');
                 success = true;
             } catch (err) {
-                console.error('無法複製:', err);
+                console.error('複製失敗:', err);
             }
             document.body.removeChild(textArea);
             return success;
         }
 
         function resetResults() {
+            const t = translations[currentLang];
             state.recognizedData = [];
             state.selectedRowIndex = -1;
             updateTable();
-            updateStatus('已清空所有資料', false);
+            updateStatus(t.statusCleared, false);
         }
 
-        // --- 事件綁定 -----------------------------------------------------
-
         function setupEventListeners() {
-            // 左側
             dom.saveApiKeyBtn.addEventListener('click', saveCustomApiKey);
             dom.imageUpload.addEventListener('change', handleImageUpload);
             dom.startCameraBtn.addEventListener('click', startCamera);
             dom.captureBtn.addEventListener('click', captureImage);
             dom.recognizeBtn.addEventListener('click', performOCR);
             
-            // 右側
             dom.copyTableBtn.addEventListener('click', () => {
+                const t = translations[currentLang];
                 if(copyTableData()) {
                     if (state.sheetMode === 'simple') {
-                        updateStatus('表格資料已複製！請點一下試算表並按 Ctrl+V。', false);
+                        updateStatus(t.statusCopied, false);
                     } else {
-                        updateStatus('表格資料已複製 (TSV)！', false);
+                        updateStatus(t.statusCopied, false);
                     }
                 } else {
-                    updateStatus('複製失敗', true);
+                    updateStatus(t.statusError, true);
                 }
             });
             dom.deleteRowBtn.addEventListener('click', deleteSelectedRow);
             dom.exportXlsxBtn.addEventListener('click', exportToXLSX);
             dom.resetBtn.addEventListener('click', resetResults);
 
-            // Google Sheet 模式切換
             dom.modeSimpleRadio.addEventListener('change', () => setSheetMode('simple'));
             dom.modeComplexRadio.addEventListener('change', () => setSheetMode('complex'));
             
-            // 簡易模式
             dom.copyAndOpenGSheetBtn.addEventListener('click', copyAndOpenGoogleSheet);
 
-            // API 模式
             dom.initAuthBtn.addEventListener('click', initAuth);
             dom.signOutBtn.addEventListener('click', handleSignoutClick);
             dom.appendToSheetBtn.addEventListener('click', appendToGoogleSheet);
 
-            // Modal
-            dom.openGeminiGuideBtn.addEventListener('click', () => { // (新)
-                dom.guideModal.classList.remove('hidden');
+            const showModal = () => { dom.guideModal.classList.remove('hidden'); };
+            const hideModal = () => { dom.guideModal.classList.add('hidden'); };
+            
+            dom.openGeminiGuideBtn.addEventListener('click', showModal);
+            dom.openGuideBtn.addEventListener('click', showModal);
+            dom.closeModalBtn.addEventListener('click', hideModal);
+            dom.closeModalX.addEventListener('click', hideModal);
+            dom.guideModalBackdrop.addEventListener('click', hideModal);
+            
+            // 語言切換按鈕
+            dom.langBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    setLanguage(e.target.dataset.lang);
+                });
             });
-            dom.openGuideBtn.addEventListener('click', () => {
-                dom.guideModal.classList.remove('hidden');
-            });
-            const closeModal = () => {
-                dom.guideModal.classList.add('hidden');
-            };
-            dom.closeModalBtn.addEventListener('click', closeModal);
-            dom.closeModalX.addEventListener('click', closeModal);
-            dom.guideModalBackdrop.addEventListener('click', closeModal);
         }
-
-        // --- 程式啟動 -----------------------------------------------------
         
         window.onload = () => {
             setupEventListeners();
-            loadCustomApiKey(); // 載入 Gemini Key
-            loadGcpCredentials(); // 載入 GCP Keys
-            
-            // 載入儲存的模式
+            loadCustomApiKey();
+            loadGcpCredentials();
             const savedMode = localStorage.getItem('sheetMode') || 'simple';
             if (savedMode === 'complex') {
                 dom.modeComplexRadio.checked = true;
@@ -1197,13 +1466,10 @@
                 dom.modeSimpleRadio.checked = true;
                 setSheetMode('simple');
             }
-            
+            setLanguage('zh'); // 預設中文
             updateDOM();
             updateTable();
         };
-
     </script>
 </body>
 </html>
-
-
